@@ -1,0 +1,1695 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fff3fb">
+  <meta name="description" content="Match colourful gumdrops, clear jelly and explore 40 levels across Nigeria. A free puzzle game that works offline.">
+  <title>Gumdrop Grid</title>
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+
+  /* Layout: one centred column. Header chips (lives, coins) on top. Either the level map or the board screen below. Modals sit above both. */
+  :root {
+    --bg: #fff3fb;
+    --panel: #ffffff;
+    --panel-2: #fff0f8;
+    --ink: #3b2a66;
+    --ink-dim: #8b7cb3;
+    --accent: #ff5fa2;
+    --accent-ink: #ffffff;
+    --gold: #ffb300;
+    --line: #f3d6ee;
+    --good: #22c08a;
+    --display: 'Fredoka', ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif;
+    --body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color-scheme: light;
+  }
+  html, body { height: 100%; }
+  body {
+    background: #fdf6fb; color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45;
+    padding-block: 18px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app { max-width: 560px; margin: 0 auto; display: grid; gap: 14px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  h1 { font-family: var(--display); font-weight: 700; font-size: 1.6rem; margin: 0; text-wrap: balance; }
+  h2 { font-family: var(--display); font-weight: 700; font-size: 1.7rem; margin: 0; text-wrap: balance; }
+  h3 { font-family: var(--display); font-weight: 600; font-size: 1rem; margin: 6px 0 0; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+  .tools { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { font: inherit; cursor: pointer; color: inherit; }
+  button:disabled { cursor: default; }
+  .ghost, .chip {
+    background: transparent; color: var(--ink); border: 1px solid var(--line);
+    padding: 7px 13px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; font-variant-numeric: tabular-nums;
+  }
+  .chip { background: var(--panel); }
+  .ghost:hover:not(:disabled), .chip:hover:not(:disabled) { background: var(--panel-2); }
+  .ghost:disabled { opacity: 0.45; }
+  .ghost[aria-pressed="true"].armed, .boost[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .primary {
+    background: var(--accent); color: var(--accent-ink); border: 0; padding: 11px 24px; border-radius: 999px;
+    font-family: var(--display); font-weight: 600; font-size: 1.05rem;
+  }
+  .primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .primary:disabled { opacity: 0.5; }
+  button:focus-visible, canvas:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  canvas:focus-visible { outline-offset: -4px; }
+
+  .hud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .stat { background: var(--panel); border-radius: 14px; padding: 8px 10px; min-width: 0; }
+  .lbl { display: block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); }
+  .val { display: block; font-family: var(--display); font-weight: 600; font-size: 1.45rem; line-height: 1.15; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+  .goal { display: grid; gap: 6px; }
+  .bar { height: 10px; background: var(--panel); border-radius: 999px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff6fae, #ffb35c); border-radius: 999px; transition: width 0.2s ease-out; }
+  .goalText { font-size: 0.9rem; color: var(--ink); font-weight: 700; }
+
+  .stage { position: relative; width: 100%; aspect-ratio: 1 / 1; border-radius: 20px; overflow: hidden; background: var(--panel); box-shadow: 0 0 0 1px var(--line); }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .boosts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .boost { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 9px 6px; font-weight: 700; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+  .boost:hover:not(:disabled) { background: var(--panel-2); }
+  .boost:disabled { opacity: 0.45; }
+  .help { margin: 0; color: var(--ink-dim); font-size: 0.85rem; max-width: 62ch; }
+  .help b { color: var(--ink); }
+  .dim { color: var(--ink-dim); margin: 0; }
+
+  /* map */
+  .mapHead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .region { display: grid; gap: 8px; }
+  .region h3 { display: flex; align-items: center; gap: 8px; }
+  .region h3::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--hue, var(--accent)); }
+  .nodes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .node { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 2px 6px; display: grid; gap: 0; justify-items: center; min-width: 0; }
+  .node b { font-family: var(--display); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .node small { color: var(--gold); font-size: 0.8rem; letter-spacing: 0.08em; min-height: 1.1em; }
+  .node:hover:not(:disabled) { background: var(--panel-2); }
+  .node:disabled { opacity: 0.4; }
+  .node.cur { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .node.sp { border-style: dashed; }
+
+  /* modal */
+  .modalWrap {
+    position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(90, 50, 140, 0.35); backdrop-filter: blur(4px);
+    padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 20px; width: 100%; max-width: 420px; max-height: 100%; overflow: auto; display: grid; gap: 12px; text-align: center; }
+  .card .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-dim); }
+  .stars { font-size: 2.3rem; color: var(--gold); letter-spacing: 0.1em; line-height: 1; }
+  .big { font-family: var(--display); font-size: 2.2rem; font-weight: 700; color: var(--gold); }
+  .spons { border: 1px dashed var(--line); border-radius: 12px; padding: 8px 10px; display: grid; gap: 2px; font-size: 0.85rem; color: var(--ink-dim); }
+  .spons b { color: var(--ink); }
+  .list { display: grid; gap: 8px; text-align: left; }
+  .item { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--panel-2); border-radius: 14px; padding: 9px 12px; }
+  .item div { min-width: 0; }
+  .item strong { display: block; }
+  .item span { display: block; font-size: 0.8rem; color: var(--ink-dim); }
+  .item button { flex: none; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 999px; padding: 7px 14px; font-weight: 700; }
+  .item button:disabled { opacity: 0.45; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .day { background: var(--panel-2); border-radius: 10px; padding: 6px 0; font-size: 0.8rem; font-weight: 700; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .day.on { background: var(--gold); color: #2a1f00; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(18px, env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-weight: 700; max-width: calc(100% - 32px); text-align: center; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (max-width: 420px) {
+    h1 { font-size: 1.35rem; }
+    .val { font-size: 1.25rem; }
+    .stat { padding: 7px 8px; }
+  }
+  body::before{content:none}
+  .app{position:relative;z-index:1}
+  h1{color:#e0368a;font-size:1.75rem}
+  .chip,.stat,.boost,.node,.item,.day{box-shadow:0 4px 0 var(--line)}
+  .chip,.ghost{border-width:2px}
+  .chip.gem{background:#fff0f7;border-color:#ffb3d6;color:#d6307f}
+  .primary{box-shadow:0 5px 0 #d23c82;transition:transform .08s}
+  .primary:active:not(:disabled){transform:translateY(4px);box-shadow:0 1px 0 #d23c82}
+  .stat{border:2px solid var(--line)}
+  .stat:nth-child(1) .val{color:#a97bff}.stat:nth-child(2) .val{color:#3da5ff}.stat:nth-child(3) .val{color:#ff5fa2}.stat:nth-child(4) .val{color:#e0368a}
+  .bar{height:16px;background:#f3dff3;border:2px solid #fff;box-shadow:inset 0 2px 4px rgba(150,80,170,.2)}
+  .bar i{background:#ff5fa2}
+  .stage{border:5px solid #fff;box-shadow:0 7px 0 #ecc9ec,0 18px 36px rgba(170,90,200,.25)}
+  .boost{border:2px solid var(--line);transition:transform .1s}.boost:active:not(:disabled){transform:translateY(3px)}
+  .node.cur{animation:pulse 1.4s ease-in-out infinite}
+  .card{border:3px solid #fff;box-shadow:0 8px 0 #ecc9ec,0 24px 50px rgba(120,60,170,.3);animation:cardIn .35s cubic-bezier(.2,1.4,.4,1)}
+  .stars{animation:cardIn .6s .15s both cubic-bezier(.2,1.6,.4,1);text-shadow:0 3px 0 #e29a00}
+  .combo{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:5;padding:6px 16px;border-radius:999px;font:700 1.15rem var(--display);color:#fff;background:#ff5fa2;box-shadow:0 4px 0 #d23c82,0 8px 18px rgba(255,95,162,.45);pointer-events:none;white-space:nowrap}
+  .combo.pop{animation:comboPop .5s cubic-bezier(.2,1.8,.4,1)}
+  .bump{animation:bump .4s cubic-bezier(.2,1.8,.4,1)}
+  @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+  @keyframes comboPop{0%{transform:translateX(-50%) scale(.3) rotate(-8deg)}60%{transform:translateX(-50%) scale(1.25) rotate(3deg)}100%{transform:translateX(-50%) scale(1)}}
+  @keyframes cardIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+  @keyframes shimmer{to{background-position:-200% 0}}
+  @keyframes pulse{50%{transform:scale(1.07)}}
+  @keyframes drift{to{transform:translate(3%,4%) rotate(4deg)}}
+  @media (prefers-reduced-motion:reduce){*,::before,::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { min-height: 100%; }
+  body { height: auto; min-height: 100%; padding-top: max(18px, env(safe-area-inset-top)); padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+  #gameScreen, #map { display: grid; gap: 14px; }
+  #map { gap: 18px; margin-top: 12px; }
+  #resumeBtn { margin-bottom: 16px; }
+  .modalOpen { overflow: hidden; }
+  .textButton { background: none; border: 0; text-decoration: underline; padding: 4px; }
+  footer { text-align: center; font-size: .8rem; padding-block: 12px; }
+  .saveNotice { padding: 12px; background: #fff0ca; color: #5b4300; border-radius: 12px; }
+  :root { --ink-dim: #72618d; --accent: #cf2874; --gold: #946300; }
+  .primary:hover:not(:disabled) { filter: brightness(.95); }
+  .item button { min-height: 44px; }
+  .ghost, button.chip, .boost { min-height: 44px; }
+  .val { font-size: clamp(1.05rem, 4vw, 1.45rem); }
+  .stat:nth-child(1) .val { color: #7542b9; }
+  .stat:nth-child(2) .val { color: #1768aa; }
+  .stat:nth-child(3) .val, .stat:nth-child(4) .val { color: #c22e71; }
+  @media (max-width: 360px) { body { padding-inline: 10px; } .hud { gap: 4px; } .stat { padding: 7px 5px; } .tools { gap: 4px; } }
+
+
+.arcadeBack{color:var(--ink-dim);font-size:12px;text-decoration:none;font-weight:700;justify-self:start}.arcadeBack:hover{text-decoration:underline}
+</style>
+
+
+
+
+
+</head>
+<body>
+<noscript><p class="saveNotice">Enable JavaScript to play Gumdrop Grid.</p></noscript>
+<div class="app">
+  <a class="arcadeBack" href="Algoredeem Games.html">← Algoredeem Games</a>
+  <header class="top">
+    <h1>Gumdrop Grid</h1>
+    <div class="tools">
+      <button id="livesChip" class="chip" aria-label="Lives">Lives 5/5</button>
+      <span id="gemChip" class="chip gem" aria-label="Gems">💎 0</span>
+      <button id="coinsChip" class="chip" aria-label="Coins and shop">Coins 0</button>
+      <button id="helpBtn" class="ghost">Help</button>
+      <button id="soundBtn" class="ghost" aria-pressed="true">Sound on</button>
+    </div>
+  </header>
+
+  <p class="saveNotice" id="saveNotice" role="status" hidden></p>
+
+  <main id="mapScreen">
+    <button id="resumeBtn" class="primary" hidden>Resume level</button>
+    <div class="mapHead"><h2>Journey</h2><span class="dim" id="starTotal"></span></div>
+    <div id="map"></div>
+  </main>
+
+  <main id="gameScreen" hidden>
+    <div class="top">
+      <button id="mapBtn" class="ghost">Map</button>
+      <span class="dim" id="regionLbl"></span>
+    </div>
+    <section class="hud" aria-label="Game status">
+      <div class="stat"><span class="lbl">Level</span><span class="val" id="level">1</span></div>
+      <div class="stat"><span class="lbl">Moves</span><span class="val" id="moves">20</span></div>
+      <div class="stat"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+      <div class="stat"><span class="lbl">Gems 💎</span><span class="val" id="gems">0</span></div>
+    </section>
+    <section class="goal" aria-label="Level goal">
+      <div class="goalText" id="goalText"></div>
+      <div class="bar" id="progress" role="progressbar" aria-label="Level progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="fill"></i></div>
+    </section>
+    <div class="stage">
+      <div class="combo" id="comboBadge" hidden></div>
+      <canvas role="application" aria-describedby="boardHelp" id="board" tabindex="0" aria-label="Gumdrop board, 8 by 8. Use the arrow keys to move the cursor, Enter to pick up a gumdrop, then an arrow key to swap it.">Your browser needs Canvas support to play Gumdrop Grid.</canvas>
+    </div>
+    <div class="boosts" aria-label="Boosters">
+      <button class="boost" id="b-hammer"></button>
+      <button class="boost" id="b-shuffle"></button>
+      <button class="boost" id="b-moves"></button>
+    </div>
+    <p class="help" id="boardHelp">Swap neighbours to line up three or more. <b>Four in a row</b> makes a striped gumdrop that clears a line. An <b>L or T</b> makes a burst gumdrop. <b>Five in a row</b> makes a prism ball that clears one colour. Pink tint on the board is jelly.</p>
+  </main>
+  <div class="sr" id="live" aria-live="polite" aria-atomic="true"></div>
+  <footer class="dim">40 levels · Play at your pace · <button id="privacyBtn" class="textButton">Privacy &amp; saves</button></footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+
+<script>window.GumdropConfig = Object.freeze({ adsenseClient: "", cmpUrl: "", adsTestMode: false });
+(function (root) {
+  'use strict';
+  function create(options = {}) {
+    const config = options.config || {};
+    const host = options.host || root;
+    const timeoutMs = options.timeoutMs || 90000;
+    let initialized = null, active = false, ready = false;
+    const available = () => /^ca-pub-\d{16}$/.test(config.adsenseClient || '');
+    async function init() {
+      if (!available()) return false;
+      if (initialized) return initialized;
+      initialized = (async () => {
+        if (!(await options.consent())) return false;
+        host.adsbygoogle = host.adsbygoogle || [];
+        host.adBreak = host.adConfig = (params) => host.adsbygoogle.push(params);
+        await options.loadScript('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + config.adsenseClient, {
+          'data-ad-client': config.adsenseClient, 'data-ad-frequency-hint': '120s',
+          ...(config.adsTestMode ? { 'data-adbreak-test': 'on' } : {})
+        });
+        return new Promise((resolve) => {
+          const timer = setTimeout(() => resolve(false), 12000);
+          host.adConfig({ preloadAdBreaks: 'on', sound: 'off', onReady: () => { clearTimeout(timer); ready = true; resolve(true); } });
+        });
+      })().catch(() => false);
+      const result = await initialized;
+      if (!result) initialized = null;
+      return result;
+    }
+    async function request(type, name, hooks = {}) {
+      if (!available() || active) return false;
+      active = true;
+      try {
+        if (!ready) { if (!(await init())) return false; }
+        else if (!(await options.consent())) { ready = false; initialized = null; return false; }
+        return await new Promise((resolve) => {
+          let earned = false, done = false, restored = false;
+          const after = () => { if (!restored) { restored = true; hooks.afterAd?.(); } };
+          const finish = () => {
+            if (done) return;
+            done = true; clearTimeout(timer); after(); resolve(earned);
+          };
+          const timer = setTimeout(finish, timeoutMs);
+          const params = { type, name, beforeAd: () => { if (!done) hooks.beforeAd?.(); },
+            afterAd: after, adBreakDone: finish };
+          if (type === 'reward') {
+            params.beforeReward = (showAd) => { if (!done) showAd(); };
+            params.adViewed = () => { if (!done) earned = true; };
+            params.adDismissed = () => { if (!done) earned = false; };
+          }
+          try { host.adBreak(params); } catch { finish(); }
+        });
+      } finally { active = false; }
+    }
+    return { available, init, rewarded: (name, hooks) => request('reward', name, hooks), interstitial: (name, hooks) => request('next', name, hooks), reset: () => { ready = false; initialized = null; } };
+  }
+  if (typeof module === 'object' && module.exports) module.exports = { create };
+  else root.GumdropAds = Object.freeze({ create });
+})(typeof window === 'object' ? window : globalThis);
+
+(function (root) {
+  'use strict';
+  const KEY = 'algoredeem-games-profile-v1';
+  const ids = ['gumdrop', 'snake', 'breakout', 'space', 'runner', 'pong', 'memory', 'merge', 'mines', 'sudoku', 'slide', 'connect', 'tictac', 'simon', 'words', 'mole', 'penalty', 'football', 'racing', 'rally', 'kart', 'basket', 'bowling', 'golf', 'pool', 'tennis', 'hockey', 'archery', 'flight', 'tank', 'rhythm'];
+  const num = (n) => Number.isSafeInteger(n) && n >= 0 ? Math.min(n, 1e9) : 0;
+  function normalize(value) {
+    const d = { name: 'Player one', favorites: [], recent: [], stats: {}, sound: true, quality: 'high' };
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return d;
+    if (typeof value.name === 'string' && value.name.trim()) d.name = value.name.trim().slice(0, 24);
+    for (const k of ['favorites', 'recent']) if (Array.isArray(value[k])) d[k] = [...new Set(value[k].filter((id) => ids.includes(id)))].slice(0, k === 'recent' ? 6 : ids.length);
+    d.sound = typeof value.sound === 'boolean' ? value.sound : true;
+    d.quality = value.quality === 'balanced' ? 'balanced' : 'high';
+    if (value.stats && typeof value.stats === 'object') for (const id of ids) {
+      const s = value.stats[id]; if (!s || typeof s !== 'object') continue;
+      d.stats[id] = { best: num(s.best), plays: num(s.plays), wins: num(s.wins), seconds: num(s.seconds) };
+    }
+    return d;
+  }
+  function visit(profile, id) {
+    if (!ids.includes(id)) return;
+    profile.recent = [id, ...profile.recent.filter((v) => v !== id)].slice(0, 6);
+    const s = profile.stats[id] ||= { best: 0, plays: 0, wins: 0, seconds: 0 }; s.plays++;
+  }
+  function result(profile, id, score, won, seconds) {
+    if (!ids.includes(id)) return false;
+    const s = profile.stats[id] ||= { best: 0, plays: 0, wins: 0, seconds: 0 };
+    const personalBest = num(Math.floor(score)) > s.best;
+    s.best = Math.max(s.best, num(Math.floor(score))); s.wins += won ? 1 : 0; s.seconds += num(Math.floor(seconds));
+    return personalBest;
+  }
+  const api = { KEY, normalize, visit, result };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.ArcadeSave = Object.freeze(api);
+})(typeof window === 'object' ? window : globalThis);
+
+/* Save validation is shared by the game and the Node test suite. */
+(function (root) {
+  'use strict';
+  const KEY = 'gumdrop-grid-save-v2';
+  const MAX_LIVES = 5, LIFE_MS = 20 * 60 * 1000, LEVELS = 40;
+  const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const integer = (v, fallback, max = 1e9) => Number.isSafeInteger(v) && v >= 0 ? Math.min(v, max) : fallback;
+  function defaults() {
+    return { version: 3, lives: MAX_LIVES, lifeTs: 0, coins: 100, gems: 5,
+      boost: { hammer: 1, shuffle: 1, moves: 1 }, unlocked: 0, stars: [],
+      daily: { last: '', streak: 0 }, wins: 0, sound: true, active: null };
+  }
+  function activeRun(v, unlocked) {
+    if (!isObject(v) || !Number.isInteger(v.level) || v.level < 0 || v.level > unlocked ||
+      !Number.isInteger(v.moves) || v.moves < 0 || v.moves > 10000 ||
+      !Number.isInteger(v.totalMoves) || v.totalMoves < 1 || v.totalMoves > 10000 ||
+      !Number.isInteger(v.score) || v.score < 0 || v.score > 1e9 ||
+      !Number.isInteger(v.collected) || v.collected < 0 || v.collected > 1e6 ||
+      !Array.isArray(v.board) || v.board.length !== 64 ||
+      !Array.isArray(v.jelly) || v.jelly.length !== 64 || v.jelly.some((j) => typeof j !== 'boolean')) return null;
+    const specials = [null, 'h', 'v', 'blast', 'bomb'];
+    if (v.board.some((t) => !isObject(t) || !specials.includes(t.sp) ||
+      (t.sp === 'bomb' ? t.t !== -1 : !Number.isInteger(t.t) || t.t < 0 || t.t >= 6))) return null;
+    return { level: v.level, moves: v.moves, totalMoves: v.totalMoves, score: v.score,
+      collected: v.collected, board: v.board.map((t) => ({ t: t.t, sp: t.sp })), jelly: v.jelly.slice() };
+  }
+  function normalize(value, now = Date.now()) {
+    const d = defaults();
+    if (!isObject(value)) return d;
+    for (const k of ['coins', 'gems', 'wins']) d[k] = integer(value[k], d[k]);
+    d.lives = integer(value.lives, MAX_LIVES, MAX_LIVES);
+    d.lifeTs = d.lives === MAX_LIVES ? 0 : Math.min(integer(value.lifeTs, now) || now, now);
+    d.unlocked = integer(value.unlocked, 0, LEVELS - 1);
+    d.sound = typeof value.sound === 'boolean' ? value.sound : true;
+    if (isObject(value.boost)) for (const k of Object.keys(d.boost)) d.boost[k] = integer(value.boost[k], 1, 1e6);
+    if (Array.isArray(value.stars)) d.stars = value.stars.slice(0, LEVELS).map((n) => integer(n, 0, 3));
+    if (isObject(value.daily) && typeof value.daily.last === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.daily.last)) {
+      d.daily = { last: value.daily.last, streak: integer(value.daily.streak, 0, 1e6) };
+    }
+    d.active = activeRun(value.active, d.unlocked);
+    return d;
+  }
+  function regenerate(save, now = Date.now()) {
+    const before = [save.lives, save.lifeTs];
+    if (save.lives >= MAX_LIVES) save.lifeTs = 0;
+    else {
+      if (!save.lifeTs || save.lifeTs > now) save.lifeTs = now;
+      const earned = Math.floor((now - save.lifeTs) / LIFE_MS);
+      save.lives = Math.min(MAX_LIVES, save.lives + earned);
+      save.lifeTs = save.lives === MAX_LIVES ? 0 : save.lifeTs + earned * LIFE_MS;
+    }
+    return before[0] !== save.lives || before[1] !== save.lifeTs;
+  }
+  function localDate(date) {
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  }
+  const api = { KEY, MAX_LIVES, LIFE_MS, defaults, normalize, regenerate, localDate };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.GumdropSave = Object.freeze(api);
+})(typeof window === 'object' ? window : globalThis);
+
+(() => {
+  'use strict';
+  const N = 8;
+  const TAU = Math.PI * 2;
+  const REDUCE = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SPEED = REDUCE ? 0.02 : 1;
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('board');
+  const ctx = canvas.getContext('2d');
+
+  /* ---------- save data ---------- */
+  const { KEY, MAX_LIVES, LIFE_MS, normalize, regenerate, localDate } = window.GumdropSave;
+  let storageAvailable = true;
+  function loadSave() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      return normalize(raw ? JSON.parse(raw) : null);
+    } catch (e) { storageAvailable = false; return normalize(null); }
+  }
+  const save = loadSave();
+  function persist(force = false) {
+    // Commit board and balances together once an action settles.
+    if (!force && inGame && busy && !over) return;
+    try { localStorage.setItem(KEY, JSON.stringify(save)); storageAvailable = true; }
+    catch (e) { storageAvailable = false; }
+    const notice = $('saveNotice');
+    notice.hidden = storageAvailable;
+    notice.textContent = 'Progress cannot be saved in this browser. Keep this tab open to continue playing.';
+  }
+  function track() { /* This release does not send analytics. */ }
+
+  /* ---------- levels ---------- */
+  const COLORS = [
+    ['#ff5d73', '#ff9aa8', '#c93550'], ['#3da5ff', '#8fceff', '#1f72c4'], ['#34d399', '#8bf0c4', '#16966a'],
+    ['#ffd43b', '#ffe88a', '#d19e00'], ['#a97bff', '#cfb6ff', '#7447d1'], ['#ff9f43', '#ffc98f', '#d1700f']
+  ];
+  const COLOR_NAMES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+  const SHAPE_NAMES = ['circle', 'square', 'triangle', 'diamond', 'hexagon', 'star'];
+  const COMBO_WORDS = ['', '', 'Gooey!', 'Syrupy!', 'Jawdropper!'];
+  const REGIONS = ['Lagos', 'Ibadan', 'Abuja', 'Kano', 'Bauchi', 'Jos', 'Enugu', 'Calabar'];
+  const HUES = ['#ff6fae', '#3da5ff', '#34d399', '#ffd43b', '#a97bff', '#ff9f43', '#ff5d73', '#8bf0c4'];
+  const LEVELS_N = 40;
+
+  const PATTERNS = {
+    rows2: (r) => r === 3 || r === 4,
+    center: (r, c) => r >= 2 && r <= 5 && c >= 2 && c <= 5,
+    frame: (r, c) => r === 0 || r === N - 1 || c === 0 || c === N - 1,
+    checker: (r, c) => (r + c) % 2 === 0,
+    cross: (r, c) => r === c || r + c === N - 1,
+    bottom: (r) => r >= 5
+  };
+  const JELLY_CYCLE = ['bottom', 'checker', 'frame', 'cross', 'center', 'rows2'];
+  // kind, moves, gumdrop colours, parameter (score target, [colour, count], or jelly pattern)
+  const EXPLICIT = [
+    ['score', 22, 5, 700], ['collect', 22, 5, [0, 12]], ['jelly', 24, 5, 'rows2'],
+    ['score', 22, 5, 1100], ['collect', 22, 5, [3, 14]], ['jelly', 24, 5, 'center'],
+    ['score', 24, 5, 1500], ['collect', 24, 6, [4, 14]], ['jelly', 26, 6, 'frame'],
+    ['score', 24, 6, 2000], ['collect', 24, 6, [1, 16]], ['jelly', 26, 6, 'cross'],
+    ['score', 26, 6, 2500], ['collect', 26, 6, [5, 18]], ['jelly', 28, 6, 'checker']
+  ];
+  function mk(kind, moves, types, p) {
+    const d = { kind, moves, types };
+    if (kind === 'score') d.target = p;
+    else if (kind === 'collect') { d.ct = p[0]; d.cn = p[1]; }
+    else d.pattern = p;
+    return d;
+  }
+  function levelDef(i) {
+    if (i < EXPLICIT.length) { const e = EXPLICIT[i]; return mk(e[0], e[1], e[2], e[3]); }
+    const kind = ['score', 'collect', 'jelly'][i % 3], mv = 26 + (i % 3);
+    if (kind === 'score') return mk(kind, mv, 6, Math.round((600 + i * 165) / 50) * 50);
+    if (kind === 'collect') return mk(kind, mv, 6, [i % 6, 14 + Math.floor(i * 0.2)]);
+    return mk(kind, mv + 2, 6, JELLY_CYCLE[i % JELLY_CYCLE.length]);
+  }
+  const regionOf = (i) => REGIONS[Math.floor(i / 5) % REGIONS.length];
+  function goalText(d) {
+    if (d.kind === 'score') return 'Score ' + d.target.toLocaleString() + ' points';
+    if (d.kind === 'collect') return 'Collect ' + d.cn + ' ' + COLOR_NAMES[d.ct] + ' ' + SHAPE_NAMES[d.ct] + 's';
+    return 'Clear all the jelly';
+  }
+
+  /* ---------- game state ---------- */
+  let arcadeSeconds = 0;
+  let level = 0, def = levelDef(0), score = 0, shownScore = 0, moves = 0, totalMoves = 20, numTypes = 5;
+  let collected = 0, jelly = new Array(N * N).fill(false), jellyLeft = 0, jellyTotal = 0;
+  let board = new Array(N * N).fill(null);
+  let busy = true, over = true, inGame = false, hammerArmed = false;
+  let cell = 60, dpr = 1, W = 480;
+  let selected = -1, cursor = 27, focused = false;
+  let hint = null, lastAct = performance.now();
+  const anims = [], particles = [], floaters = [], fx = [];
+
+  /* ---------- helpers ---------- */
+  const rand = (n) => Math.floor(Math.random() * n);
+  const inb = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const adjacent = (a, b) => {
+    const ar = (a / N) | 0, ac = a % N, br = (b / N) | 0, bc = b % N;
+    return Math.abs(ar - br) + Math.abs(ac - bc) === 1;
+  };
+  const easeOutCubic = (p) => 1 - Math.pow(1 - p, 3);
+  const easeInOut = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+  const easeIn = (p) => p * p;
+  const ymd = localDate;
+  const fmtTime = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+  function h(tag, props, ...kids) {
+    const e = document.createElement(tag);
+    if (props) for (const k in props) {
+      const v = props[k];
+      if (k === 'class') e.className = v;
+      else if (k === 'text') e.textContent = v;
+      else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+      else if (v === true) e.setAttribute(k, '');
+      else if (v !== false && v != null) e.setAttribute(k, v);
+    }
+    for (const kd of kids.flat()) if (kd != null && kd !== false) e.append(kd.nodeType ? kd : document.createTextNode(kd));
+    return e;
+  }
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+  }
+
+  function setBusy(v) {
+    busy = v; updateBoosters();
+    for (const id of ['mapBtn', 'livesChip', 'coinsChip', 'helpBtn', 'privacyBtn']) $(id).disabled = inGame && busy;
+    canvas.setAttribute('aria-busy', String(busy && inGame));
+  }
+  function checkpoint() {
+    save.active = { level, moves, totalMoves, score, collected,
+      board: board.map((t) => ({ t: t.t, sp: t.sp })), jelly: jelly.slice() };
+    persist(true);
+  }
+  function announceCursor() {
+    const t = board[cursor];
+    if (!t) return;
+    const label = 'Row ' + (Math.floor(cursor / N) + 1) + ', column ' + (cursor % N + 1) + ': ' +
+      (t.sp === 'bomb' ? 'prism ball' : COLOR_NAMES[t.t] + ' ' + SHAPE_NAMES[t.t] + (t.sp ? ', ' + ({ h: 'row stripe', v: 'column stripe', blast: 'burst' })[t.sp] : '')) +
+      (jelly[cursor] ? ', jelly' : '') + (selected === cursor ? ', selected' : '');
+    $('live').textContent = label;
+  }
+
+  function anim(dur, fn, ease) {
+    dur = Math.max(1, dur * SPEED);
+    return new Promise((res) => anims.push({ dur, fn, ease: ease || ((x) => x), t0: performance.now(), res }));
+  }
+  function runAnims() {
+    const now = performance.now();
+    for (const a of anims.slice()) {
+      const ms = Math.max(0, Math.min(a.dur, now - a.t0));
+      a.fn(a.ease(ms / a.dur), ms / SPEED);
+      if (ms >= a.dur) { anims.splice(anims.indexOf(a), 1); a.res(); }
+    }
+  }
+
+  /* ---------- audio ---------- */
+  let AC = null, muted = !save.sound;
+  function ensureAudio() {
+    if (muted) return;
+    try {
+      if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+      if (AC.state === 'suspended') AC.resume().catch(() => {});
+    } catch (e) { AC = null; }
+  }
+  function blip(freq, dur, type, vol, when) {
+    if (!AC || muted) return;
+    try {
+      const o = AC.createOscillator(), g = AC.createGain();
+      const t = AC.currentTime + (when || 0);
+      o.type = type || 'triangle'; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol || 0.06, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.12));
+      o.connect(g); g.connect(AC.destination);
+      o.start(t); o.stop(t + (dur || 0.12) + 0.03);
+    } catch (e) { /* audio is optional */ }
+  }
+  const SCALE = [523, 587, 659, 784, 880, 988, 1047, 1175];
+
+  /* ---------- tiles and matching ---------- */
+  function makeTile(t, r, c) { return { t, sp: null, x: c, y: r, s: 1, a: 1, target: undefined }; }
+  function randType() { return rand(numTypes); }
+  const typeAt = (i) => { const tl = board[i]; return !tl || tl.sp === 'bomb' ? -1 : tl.t; };
+
+  function runLen(i, dr, dc) {
+    const t = typeAt(i);
+    if (t < 0) return 0;
+    const r = (i / N) | 0, c = i % N;
+    let n = 1, rr = r + dr, cc = c + dc;
+    while (inb(rr, cc) && typeAt(rr * N + cc) === t) { n++; rr += dr; cc += dc; }
+    rr = r - dr; cc = c - dc;
+    while (inb(rr, cc) && typeAt(rr * N + cc) === t) { n++; rr -= dr; cc -= dc; }
+    return n;
+  }
+  const hasMatchAt = (i) => runLen(i, 0, 1) >= 3 || runLen(i, 1, 0) >= 3;
+
+  function validSwap(a, b) {
+    const ta = board[a], tb = board[b];
+    if (!ta || !tb) return false;
+    if (ta.sp === 'bomb' || tb.sp === 'bomb') return true;
+    if (ta.sp && tb.sp) return true;
+    board[a] = tb; board[b] = ta;
+    const ok = hasMatchAt(a) || hasMatchAt(b);
+    board[a] = ta; board[b] = tb;
+    return ok;
+  }
+  function findMove() {
+    const list = [];
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const i = r * N + c;
+      if (c + 1 < N && validSwap(i, i + 1)) list.push({ a: i, b: i + 1 });
+      if (r + 1 < N && validSwap(i, i + N)) list.push({ a: i, b: i + N });
+    }
+    return list.length ? list[rand(list.length)] : null;
+  }
+
+  function findMatches() {
+    const runs = [];
+    for (let r = 0; r < N; r++) {
+      let c = 0;
+      while (c < N) {
+        const t = typeAt(r * N + c);
+        if (t < 0) { c++; continue; }
+        let e = c;
+        while (e + 1 < N && typeAt(r * N + e + 1) === t) e++;
+        if (e - c >= 2) { const cells = []; for (let k = c; k <= e; k++) cells.push(r * N + k); runs.push({ dir: 'h', t, cells }); }
+        c = e + 1;
+      }
+    }
+    for (let c = 0; c < N; c++) {
+      let r = 0;
+      while (r < N) {
+        const t = typeAt(r * N + c);
+        if (t < 0) { r++; continue; }
+        let e = r;
+        while (e + 1 < N && typeAt((e + 1) * N + c) === t) e++;
+        if (e - r >= 2) { const cells = []; for (let k = r; k <= e; k++) cells.push(k * N + c); runs.push({ dir: 'v', t, cells }); }
+        r = e + 1;
+      }
+    }
+    const groups = [];
+    for (const run of runs) {
+      const hit = groups.filter((g) => g.t === run.t && run.cells.some((i) => g.set.has(i)));
+      if (!hit.length) {
+        groups.push({ t: run.t, set: new Set(run.cells), runs: [run] });
+      } else {
+        const g = hit[0];
+        run.cells.forEach((i) => g.set.add(i));
+        g.runs.push(run);
+        for (let k = 1; k < hit.length; k++) {
+          const o = hit[k];
+          o.set.forEach((i) => g.set.add(i));
+          g.runs.push(...o.runs);
+          groups.splice(groups.indexOf(o), 1);
+        }
+      }
+    }
+    return groups;
+  }
+
+  function planSpecial(g, swapInfo) {
+    const longest = g.runs.reduce((m, r) => (r.cells.length > m.cells.length ? r : m), g.runs[0]);
+    const maxRun = longest.cells.length;
+    const hasH = g.runs.some((r) => r.dir === 'h'), hasV = g.runs.some((r) => r.dir === 'v');
+    let sp = null;
+    if (maxRun >= 5) sp = 'bomb';
+    else if (hasH && hasV) sp = 'blast';
+    else if (maxRun === 4) sp = longest.dir === 'h' ? 'v' : 'h';
+    if (!sp) return null;
+    let pos = null;
+    if (swapInfo) for (const i of [swapInfo.a, swapInfo.b]) if (g.set.has(i)) { pos = i; break; }
+    if (pos == null && sp === 'blast') {
+      const cnt = new Map();
+      g.runs.forEach((r) => r.cells.forEach((i) => cnt.set(i, (cnt.get(i) || 0) + 1)));
+      for (const [i, n] of cnt) if (n > 1) { pos = i; break; }
+    }
+    if (pos == null) pos = longest.cells[Math.floor((longest.cells.length - 1) / 2)];
+    return { i: pos, sp, t: g.t };
+  }
+
+  function expand(clear, beams) {
+    const queue = [...clear], seen = new Set();
+    const add = (j) => { if (board[j] && !clear.has(j)) { clear.add(j); queue.push(j); } };
+    while (queue.length) {
+      const i = queue.pop();
+      if (seen.has(i)) continue;
+      seen.add(i);
+      const tl = board[i];
+      if (!tl || !tl.sp) continue;
+      const r = (i / N) | 0, c = i % N;
+      if (tl.sp === 'h') {
+        beams.push({ k: 'row', r });
+        for (let k = 0; k < N; k++) add(r * N + k);
+      } else if (tl.sp === 'v') {
+        beams.push({ k: 'col', c });
+        for (let k = 0; k < N; k++) add(k * N + c);
+      } else if (tl.sp === 'blast') {
+        beams.push({ k: 'ring', r, c });
+        for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+          if (Math.abs(dr) + Math.abs(dc) <= 2 && inb(r + dr, c + dc)) add((r + dr) * N + c + dc);
+        }
+      } else if (tl.sp === 'bomb') {
+        let tg = tl.target;
+        if (tg === undefined) {
+          const cnt = new Array(6).fill(0);
+          board.forEach((o) => { if (o && o.sp !== 'bomb' && o.t >= 0) cnt[o.t]++; });
+          tg = cnt.indexOf(Math.max(...cnt));
+        }
+        for (let j = 0; j < N * N; j++) {
+          const o = board[j];
+          if (!o || j === i) continue;
+          if (tg === 'all' || (o.sp !== 'bomb' && o.t === tg)) { beams.push({ k: 'zap', from: i, to: j }); add(j); }
+        }
+      }
+    }
+  }
+
+  /* ---------- effects ---------- */
+  function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  let comboT, shake = 0;
+  function showCombo(m) {
+    const el = $('comboBadge'); el.textContent = '×' + m.toFixed(1) + ' COMBO'; el.hidden = false;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    clearTimeout(comboT); comboT = setTimeout(() => { el.hidden = true; }, 1500);
+  }
+  function addGems(n, x, y) {
+    if (n <= 0) return;
+    save.gems += n; persist(); renderChips(); bump($('gems')); bump($('gemChip'));
+    floater('💎+' + n, x, y, 26, '#ff5fa2', 1100); blip(1320, 0.12, 'sine', 0.06);
+  }
+  function burst(x, y, color, n) {
+    if (REDUCE) return;
+    n = n || 7;
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * TAU, v = 120 + Math.random() * 260;
+      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, age: 0, life: 0.5 + Math.random() * 0.4, color: k % 3 === 0 ? '#ffffff' : color, size: 3 + Math.random() * 4, sh: k % 4 === 0 ? 2 : k % 2, rot: Math.random() * 6 });
+    }
+    if (n >= 12) fx.push({ k: 'ring2', x, y, color, born: performance.now(), life: 450 });
+  }
+  function floater(text, x, y, size, color, life) {
+    floaters.push({ text, x, y, size: size || 20, color: color || '#fff', life: life || 900, born: performance.now() });
+  }
+  const px = (i) => ({ x: ((i % N) + 0.5) * cell, y: (((i / N) | 0) + 0.5) * cell });
+
+  /* ---------- board flow ---------- */
+  function fallAnim(items) {
+    if (!items.length) return Promise.resolve();
+    const total = Math.max(...items.map((it) => it.delay + it.dur));
+    return anim(total, (p, ms) => {
+      for (const it of items) {
+        const q = Math.min(1, Math.max(0, (ms - it.delay) / it.dur));
+        it.tile.y = it.from + (it.to - it.from) * easeOutCubic(q);
+      }
+    });
+  }
+
+  function newBoard() {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      board = new Array(N * N).fill(null);
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+        let t, guard = 0;
+        do {
+          t = randType(); guard++;
+          const l1 = c >= 2 && board[r * N + c - 1].t === t && board[r * N + c - 2].t === t;
+          const u1 = r >= 2 && board[(r - 1) * N + c].t === t && board[(r - 2) * N + c].t === t;
+          if (!l1 && !u1) break;
+        } while (guard < 30);
+        board[r * N + c] = makeTile(t, r, c);
+      }
+      if (!findMatches().length && findMove()) return;
+    }
+    // A deterministic playable fallback avoids an unbounded generation loop.
+    board = Array.from({ length: N * N }, (_, i) => makeTile((Math.floor(i / N) + i % N) % numTypes, Math.floor(i / N), i % N));
+    board[0].t = 0; board[1].t = 1; board[2].t = 0; board[9].t = 0;
+  }
+
+  async function dropIn() {
+    const items = [];
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const tl = board[r * N + c];
+      tl.y = r - N - 1;
+      items.push({ tile: tl, from: tl.y, to: r, delay: c * 35 + (N - r) * 10, dur: 380 });
+    }
+    await fallAnim(items);
+  }
+
+  async function gravityFill() {
+    const items = [];
+    for (let c = 0; c < N; c++) {
+      let write = N - 1;
+      for (let r = N - 1; r >= 0; r--) {
+        const tl = board[r * N + c];
+        if (tl) {
+          if (r !== write) { board[write * N + c] = tl; board[r * N + c] = null; }
+          write--;
+        }
+      }
+      for (let r = write; r >= 0; r--) {
+        const tl = makeTile(randType(), r, c);
+        tl.y = r - (write + 1);
+        board[r * N + c] = tl;
+      }
+    }
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const tl = board[r * N + c];
+      tl.x = c;
+      const dist = r - tl.y;
+      if (Math.abs(dist) > 0.001) items.push({ tile: tl, from: tl.y, to: r, delay: 0, dur: 110 + dist * 55 });
+    }
+    await fallAnim(items);
+    board.forEach((tl, i) => { if (tl) { tl.y = (i / N) | 0; tl.x = i % N; } });
+  }
+
+  async function clearStep(groups, extra, swapInfo, combo) {
+    const clear = new Set(extra || []);
+    const plans = [];
+    for (const g of groups) {
+      g.set.forEach((i) => clear.add(i));
+      const p = planSpecial(g, swapInfo);
+      if (p) plans.push(p);
+    }
+    const beams = [];
+    expand(clear, beams);
+    const made = [];
+    for (const p of plans) {
+      const tile = board[p.i];
+      if (tile && tile.sp) continue;
+      clear.delete(p.i);
+      made.push(p);
+    }
+    const cells = [...clear];
+    const sizeBonus = Math.max(0, cells.length - 3) * 15;
+    const mult = 1 + (combo - 1) * 0.5;
+    const pts = Math.round((cells.length * 10 + sizeBonus + made.length * 40) * mult);
+    score += pts; bump($('score'));
+    for (const i of cells) {
+      if (jelly[i]) { jelly[i] = false; jellyLeft--; }
+      const tl = board[i];
+      if (tl && def.kind === 'collect' && tl.sp !== 'bomb' && tl.t === def.ct) collected++;
+    }
+
+    const now = performance.now();
+    beams.forEach((b) => {
+      const o = { ...b, born: now, life: 420 };
+      if (b.k === 'zap') { o.p1 = px(b.from); o.p2 = px(b.to); }
+      fx.push(o);
+    });
+    const tiles = [];
+    let cx = 0, cy = 0;
+    for (const i of cells) {
+      const tl = board[i];
+      if (!tl) continue;
+      tiles.push(tl);
+      const p = px(i);
+      cx += p.x; cy += p.y;
+      burst(p.x, p.y, tl.sp === 'bomb' ? '#ffb300' : COLORS[tl.t][0], 9);
+    }
+    const bx = cx / Math.max(1, tiles.length), by = cy / Math.max(1, tiles.length);
+    if (tiles.length) floater('+' + pts, bx, by, 22 + Math.min(16, pts / 40), '#fff', 900);
+    if (sizeBonus) floater('Big match +' + sizeBonus, bx, by + 26, 18, '#ffd43b', 1000);
+    if (combo >= 2) {
+      floater(COMBO_WORDS[Math.min(combo, 4)], W / 2, W / 2, 32 + combo * 2, '#ffd43b', 1000);
+      showCombo(mult);
+      if (combo >= 3) burst(W / 2, W / 2, '#ffb300', 10 + combo * 4);
+    }
+    shake = Math.max(shake, Math.min(12, (beams.length ? 8 : 0) + combo * 2 + cells.length * 0.4));
+    addGems((combo >= 2 ? combo - 1 : 0) + made.length + (cells.length >= 5 ? 1 : 0), bx, by - 26);
+
+    blip(SCALE[Math.min(combo - 1, SCALE.length - 1)], 0.2, 'triangle', 0.07);
+    if (beams.length) blip(196, 0.25, 'sawtooth', 0.04);
+    if (made.length) { blip(1175, 0.18, 'sine', 0.06, 0.05); blip(1568, 0.22, 'sine', 0.05, 0.12); }
+
+    updateHud();
+    await anim(260, (p) => tiles.forEach((t) => { t.s = p < 0.3 ? 1 + p : 1.3 * (1 - (p - 0.3) / 0.7); t.a = p < 0.3 ? 1 : 1 - (p - 0.3) / 0.7; }), easeIn);
+    cells.forEach((i) => { board[i] = null; });
+    for (const m of made) {
+      const tl = board[m.i];
+      if (!tl) continue;
+      tl.sp = m.sp;
+      if (m.sp === 'bomb') tl.t = -1;
+      tl.s = 1.5; { const q = px(m.i); burst(q.x, q.y, '#ffb300', 14); shake = Math.max(shake, 5); }
+      anim(280, (p) => { tl.s = 1.5 - 0.5 * p; }, easeOutCubic);
+    }
+  }
+
+  async function resolve(first) {
+    let combo = 0, ctxInfo = first;
+    for (let cascade = 0; cascade < 100; cascade++) {
+      const groups = findMatches();
+      const extra = ctxInfo && ctxInfo.extra;
+      if (!groups.length && !(extra && extra.size)) return;
+      combo++;
+      await clearStep(groups, extra, ctxInfo, combo);
+      await gravityFill();
+      ctxInfo = null;
+    }
+    newBoard(); toast("The board has been refreshed.");
+  }
+
+  async function reshuffle() {
+    hint = null; selected = -1;
+    floater('Shuffling!', W / 2, W / 2, 24, '#fff', 1300);
+    const tiles = board.filter(Boolean);
+    await anim(240, (p) => tiles.forEach((t) => { t.s = 1 - 0.7 * p; }), easeInOut);
+    let tries = 0;
+    do {
+      const regular = tiles.filter((t) => t.sp !== 'bomb');
+      const types = regular.map((t) => t.t);
+      for (let i = types.length - 1; i > 0; i--) { const j = rand(i + 1); [types[i], types[j]] = [types[j], types[i]]; }
+      regular.forEach((t, k) => { t.t = types[k]; });
+      tries++;
+      if (tries === 150) regular.forEach((t) => { t.t = randType(); });
+    } while ((findMatches().length || !findMove()) && tries < 600);
+    if (findMatches().length || !findMove()) { newBoard(); return; }
+    await anim(240, (p) => tiles.forEach((t) => { t.s = 0.3 + 0.7 * p; }), easeOutCubic);
+    tiles.forEach((t) => { t.s = 1; });
+  }
+
+  function slide(pairs, dur) {
+    const start = pairs.map(([tl]) => ({ x: tl.x, y: tl.y }));
+    return anim(dur, (p) => pairs.forEach(([tl, r, c], k) => {
+      tl.x = start[k].x + (c - start[k].x) * p;
+      tl.y = start[k].y + (r - start[k].y) * p;
+    }), easeInOut);
+  }
+
+  const goalMet = () => (def.kind === 'score' ? score >= def.target : def.kind === 'collect' ? collected >= def.cn : jellyLeft <= 0);
+
+  async function afterAction() {
+    if (goalMet()) { finish(true); return; }
+    if (moves <= 0) { finish(false); return; }
+    if (!findMove()) await reshuffle();
+    $('live').textContent = 'Score ' + score + '. ' + moves + ' moves left.';
+    checkpoint();
+    setBusy(false);
+    lastAct = performance.now();
+  }
+
+  async function trySwap(a, b) {
+    if (busy || over || modalEl || !inGame || !adjacent(a, b) || !board[a] || !board[b]) return;
+    setBusy(true);
+    selected = -1; hint = null; lastAct = performance.now();
+    const ta = board[a], tb = board[b];
+    const ar = (a / N) | 0, ac = a % N, br = (b / N) | 0, bc = b % N;
+    blip(380, 0.08, 'triangle', 0.05);
+    await slide([[ta, br, bc], [tb, ar, ac]], 160);
+    board[a] = tb; board[b] = ta;
+
+    let extra = null;
+    if (ta.sp === 'bomb' || tb.sp === 'bomb') {
+      extra = new Set([a, b]);
+      const bombT = ta.sp === 'bomb' ? ta : tb, other = bombT === ta ? tb : ta;
+      bombT.target = other.sp === 'bomb' ? 'all' : other.t;
+      if (other.sp === 'bomb') other.target = 'all';
+    } else if (ta.sp && tb.sp) {
+      extra = new Set([a, b]);
+    }
+    const groups = findMatches();
+    if (!extra && !groups.length) {
+      board[a] = ta; board[b] = tb;
+      blip(160, 0.16, 'sawtooth', 0.04);
+      await slide([[ta, ar, ac], [tb, br, bc]], 160);
+      setBusy(false);
+      lastAct = performance.now();
+      return;
+    }
+    moves--;
+    updateHud();
+    await resolve({ a, b, extra });
+    await afterAction();
+  }
+
+  /* ---------- boosters ---------- */
+  const BOOST = [
+    { k: 'hammer', name: 'Hammer', cost: 60 },
+    { k: 'shuffle', name: 'Shuffle', cost: 50 },
+    { k: 'moves', name: '+5 moves', cost: 80 }
+  ];
+  function updateBoosters() {
+    for (const b of BOOST) {
+      const el = $('b-' + b.k), n = save.boost[b.k] || 0;
+      el.textContent = b.name + (n > 0 ? ' ×' + n : ' · ' + b.cost);
+      el.disabled = busy || over || !inGame;
+      el.setAttribute('aria-pressed', String(b.k === 'hammer' && hammerArmed));
+    }
+  }
+  function ensureStock(b) {
+    if ((save.boost[b.k] || 0) > 0) return true;
+    if (save.coins >= b.cost) { save.coins -= b.cost; save.boost[b.k] = 1; persist(); renderChips(); return true; }
+    toast('Earn more coins by completing levels or claiming your daily reward.');
+    return false;
+  }
+  async function boostClick(k) {
+    if (busy || over || modalEl || !inGame) return;
+    const b = BOOST.find((x) => x.k === k);
+    if (k === 'hammer' && hammerArmed) { hammerArmed = false; updateBoosters(); return; }
+    if (!ensureStock(b)) return;
+    track('booster_use', { k });
+    if (k === 'hammer') { hammerArmed = true; updateBoosters(); toast('Tap a gumdrop to smash it'); return; }
+    setBusy(true);
+    save.boost[k]--;
+    if (k === 'moves') { moves += 5; checkpoint(); setBusy(false); updateHud(); toast('+5 moves'); return; }
+    await reshuffle();
+    checkpoint(); setBusy(false);
+    lastAct = performance.now();
+  }
+  async function doHammer(i) {
+    if (busy || over || modalEl || !inGame || !board[i] || save.boost.hammer <= 0) return;
+    setBusy(true);
+    hammerArmed = false;
+    save.boost.hammer--;
+    hint = null; selected = -1;
+    await resolve({ a: -1, b: -1, extra: new Set([i]) });
+    await afterAction();
+  }
+
+  /* ---------- lives ---------- */
+  function regen() { if (regenerate(save)) persist(); }
+  function loseLife() {
+    regen();
+    if (save.lives >= MAX_LIVES) save.lifeTs = Date.now();
+    save.lives = Math.max(0, save.lives - 1);
+    persist(); renderChips();
+  }
+  function renderChips() {
+    const wait = save.lives < MAX_LIVES && save.lifeTs ? ' · ' + fmtTime(save.lifeTs + LIFE_MS - Date.now()) : '';
+    $('livesChip').textContent = 'Lives ' + save.lives + '/' + MAX_LIVES + wait;
+    $('coinsChip').textContent = 'Coins ' + save.coins.toLocaleString();
+    $('gemChip').textContent = '💎 ' + save.gems.toLocaleString();
+    $('gems').textContent = save.gems.toLocaleString();
+  }
+
+  /* ---------- modals ---------- */
+  let modalEl = null, modalOpts = {}, returnFocus = null;
+  function closeModal(restore = true) {
+    if (!modalEl) return;
+    modalEl.remove(); modalEl = null;
+    document.querySelector('.app').inert = false;
+    document.body.classList.remove('modalOpen');
+    if (restore && returnFocus && returnFocus.isConnected && !returnFocus.disabled && !returnFocus.closest('[hidden]')) returnFocus.focus({ preventScroll: true });
+    returnFocus = null;
+  }
+  function openModal(card, opts) {
+    const previousFocus = returnFocus || document.activeElement;
+    closeModal(false);
+    returnFocus = previousFocus;
+    modalOpts = opts || {};
+    const heading = card.querySelector('h2');
+    if (heading) heading.id = 'dialogTitle';
+    const wrap = h('div', { class: 'modalWrap', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': heading ? 'dialogTitle' : null }, card);
+    wrap.addEventListener('pointerdown', (e) => { if (e.target === wrap && modalOpts.closable) closeModal(); });
+    modalEl = wrap; down = null;
+    document.querySelector('.app').inert = true;
+    document.body.classList.add('modalOpen');
+    document.body.append(wrap);
+    card.tabIndex = -1;
+    (card.querySelector('button:not(:disabled)') || card).focus();
+  }
+  document.addEventListener('keydown', (e) => {
+    if (!modalEl) return;
+    if (e.key === 'Escape' && modalOpts.closable) { e.preventDefault(); closeModal(); }
+    if (e.key === 'Tab') {
+      const buttons = [...modalEl.querySelectorAll('button:not(:disabled), [href], input, [tabindex="0"]')];
+      if (!buttons.length) { e.preventDefault(); return; }
+      const first = buttons[0], last = buttons[buttons.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !modalEl.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !modalEl.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+    }
+  });
+
+  /* Google H5 Games: reward only after Google's adViewed callback. */
+  const AD_CHOICE_KEY = 'gumdrop-grid-ad-choice-v1';
+  let adChoice = false, adPaused = false;
+  try { adChoice = localStorage.getItem(AD_CHOICE_KEY) === 'yes'; } catch {}
+  function loadAdScript(src, attrs = {}) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script'); script.async = true; script.src = src; script.crossOrigin = 'anonymous';
+      for (const [key, value] of Object.entries(attrs)) script.setAttribute(key, value);
+      const timer = setTimeout(() => { script.remove(); reject(new Error('Ad service unavailable')); }, 12000);
+      script.onload = () => { clearTimeout(timer); resolve(); };
+      script.onerror = () => { clearTimeout(timer); script.remove(); reject(new Error('Ad service unavailable')); };
+      document.head.append(script);
+    });
+  }
+  async function googleConsent() {
+    // A publisher's certified CMP may expose a consent-ready integration hook.
+    if (typeof window.GumdropConsentReady === 'function') return !!(await window.GumdropConsentReady());
+    const url = window.GumdropConfig.cmpUrl;
+    if (!url) return false;
+    if (typeof window.__tcfapi !== 'function') await loadAdScript(url);
+    return new Promise((resolve) => {
+      let done = false;
+      const end = (allowed, listenerId) => {
+        if (done) return; done = true; clearTimeout(timer);
+        if (listenerId != null && typeof window.__tcfapi === 'function') window.__tcfapi('removeEventListener', 2, () => {}, listenerId);
+        resolve(allowed);
+      };
+      const timer = setTimeout(() => end(false), 20000);
+      if (typeof window.__tcfapi !== 'function') { end(false); return; }
+      window.__tcfapi('addEventListener', 2, (data, success) => {
+        if (!success || !data || !['tcloaded', 'useractioncomplete'].includes(data.eventStatus)) return;
+        const allowed = data.gdprApplies === false || (data.gdprApplies === true && data.vendor?.consents?.[755] === true && data.purpose?.consents?.[1] === true && data.purpose?.consents?.[2] === true);
+        end(allowed, data.listenerId);
+      });
+    });
+  }
+  const ads = window.GumdropAds.create({ config: window.GumdropConfig, consent: googleConsent, loadScript: loadAdScript });
+  function adPreferences() {
+    return new Promise((resolve) => {
+      const choose = (allowed) => {
+        adChoice = allowed;
+        try { localStorage.setItem(AD_CHOICE_KEY, allowed ? 'yes' : 'no'); } catch {}
+        if (!allowed) ads.reset();
+        closeModal(); resolve(allowed);
+      };
+      openModal(h('div', { class: 'card' }, h('h2', { text: 'Ad preferences' }),
+        h('p', { text: 'Optional Google ads offer extra rewards and occasional breaks between levels. Google may use device information to serve ads. You can change your choice in Privacy & saves.' }),
+        h('a', { href: 'https://policies.google.com/privacy', target: '_blank', rel: 'noopener noreferrer', text: 'Google Privacy Policy' }),
+        h('div', { class: 'row' },
+          h('button', { class: 'primary', text: 'Enable ads', disabled: !ads.available(), onclick: () => choose(true) }),
+          h('button', { class: 'ghost', text: 'No thanks', onclick: () => choose(false) })),
+        !ads.available() ? h('p', { class: 'dim', text: 'Ad rewards are unavailable right now.' }) : null));
+    });
+  }
+  const adHooks = {
+    beforeAd: () => { adPaused = true; if (AC) AC.suspend().catch(() => {}); },
+    afterAd: () => {
+      adPaused = false;
+      if (AC && !muted && !document.hidden) AC.resume().catch(() => {});
+      wakeFrame();
+    }
+  };
+  const Monet = {
+    available: () => ads.available() && navigator.onLine !== false,
+    async rewarded(placement) {
+      if (!Monet.available()) { toast('Ad rewards are unavailable right now.'); return false; }
+      if (!adChoice && !(await adPreferences())) return false;
+      openModal(h('div', { class: 'card' }, h('h2', { text: 'Ad reward' }), h('p', { text: 'Opening the ad…' })));
+      const earned = await ads.rewarded(placement, adHooks);
+      closeModal();
+      if (!earned) toast('No reward was earned. You can keep playing.');
+      return earned;
+    },
+    async interstitial() {
+      if (!adChoice || !Monet.available()) return;
+      await ads.interstitial('between_levels', adHooks);
+    }
+  };
+
+  function row(title, sub, label, fn, disabled) {
+    return h('div', { class: 'item' }, h('div', null, h('strong', { text: title }), h('span', { text: sub })), h('button', { text: label, disabled: !!disabled, onclick: fn }));
+  }
+  function shop() {
+    if (inGame && busy) return;
+    const list = h('div', { class: 'list' });
+    list.append(row('Ad reward', 'Watch an ad to earn 25 coins', 'Watch', async () => {
+      if (await Monet.rewarded('free_coins')) { save.coins += 25; persist(); renderChips(); toast('+25 coins'); }
+      shop();
+    }, !Monet.available()));
+    for (const b of BOOST) {
+      list.append(row(b.name, 'You have ' + (save.boost[b.k] || 0), b.cost + ' coins', () => {
+        if (save.coins < b.cost) { toast('Not enough coins'); return; }
+        save.coins -= b.cost; save.boost[b.k]++; persist(); renderChips(); updateBoosters(); shop();
+      }, save.coins < b.cost));
+    }
+    openModal(h('div', { class: 'card' }, h('h2', { text: 'Boosters' }), list,
+      h('p', { class: 'dim', text: 'Earn coins from levels, daily rewards and optional ads. No real money is needed.' }),
+      h('button', { class: 'primary', text: 'Close', onclick: closeModal })), { closable: true });
+  }
+  function livesModal() {
+    if (inGame && busy) return;
+    regen(); renderChips();
+    const full = save.lives >= MAX_LIVES;
+    const next = !full && save.lifeTs ? 'Next life in ' + fmtTime(save.lifeTs + LIFE_MS - Date.now()) + '.' : 'Your lives are full.';
+    openModal(h('div', { class: 'card' }, h('h2', { text: save.lives > 0 ? 'Lives' : 'Out of lives' }),
+      h('p', { class: 'dim', text: save.lives + ' of ' + MAX_LIVES + '. ' + next }),
+      h('p', { class: 'dim', text: 'A life returns every 20 minutes. You lose one when a level ends without reaching the goal, or when you leave it.' }),
+      row('Ad reward', 'Watch an ad to get one life', 'Watch', async () => {
+        if (await Monet.rewarded('life')) { save.lives = Math.min(MAX_LIVES, save.lives + 1); regen(); persist(); renderChips(); }
+        livesModal();
+      }, full || !Monet.available()),
+      row('Refill all lives', 'Spend earned coins', '90 coins', () => {
+        if (save.coins < 90) return;
+        save.coins -= 90; save.lives = MAX_LIVES; save.lifeTs = 0; persist(); renderChips(); livesModal();
+      }, full || save.coins < 90),
+      h('button', { class: 'primary', text: 'Back to map', onclick: showMap })), { closable: true });
+  }
+  function help() {
+    if (inGame && busy) return;
+    openModal(h('div', { class: 'card' }, h('h2', { text: 'How to play' }),
+      h('p', { text: 'Swap neighbouring gumdrops to match three or more. Reach the goal before you run out of moves. Invalid swaps do not cost a move.' }),
+      h('p', { text: 'Drag a gumdrop, or tap one and then its neighbour. With a keyboard, use arrows to move, Enter or Space to select, then an arrow to swap. Escape cancels your selection.' }),
+      h('p', { text: 'Four makes a stripe, an L or T makes a burst, and five makes a prism ball. Swap two special gumdrops to activate both. Match over pink jelly to clear it.' }),
+      h('p', { text: 'Hammer clears one gumdrop without spending a move. Shuffle rearranges the board. +5 moves gives you more turns. Your level is saved after each turn.' }),
+      h('button', { class: 'primary', text: 'Got it', onclick: closeModal })), { closable: true });
+  }
+  function privacy() {
+    if (inGame && busy) return;
+    openModal(h('div', { class: 'card' }, h('h2', { text: 'Privacy & saves' }),
+      h('p', { text: 'Gumdrop Grid saves progress, sound and ad preferences in this browser. It sends no game analytics and has no payments or account. Optional Google ads may use device information. Your hosting provider may keep website access logs.' }),
+      h('p', { text: 'Offline files are cached on this device. Clearing browser data removes progress. Saves are not shared between browsers or devices. Use one tab at a time to keep progress consistent.' }),
+      h('div', { class: 'row' }, h('button', { class: 'primary', text: 'Close', onclick: closeModal }),
+      h('button', { class: 'ghost', text: 'Ad preferences', onclick: async () => { await adPreferences(); privacy(); } }),
+      h('button', { class: 'ghost', text: 'Reset progress', onclick: () => {
+        openModal(h('div', { class: 'card' }, h('h2', { text: 'Reset all progress?' }),
+          h('p', { text: 'This removes your stars, coins, boosters and saved level from this browser.' }),
+          h('button', { class: 'primary', text: 'Keep progress', onclick: closeModal }),
+          h('button', { class: 'ghost', text: 'Reset', onclick: () => {
+            Object.assign(save, window.GumdropSave.defaults()); persist(true); showMap(); renderChips(); updateBoosters();
+          } })), { closable: true });
+      } }))), { closable: true });
+  }
+
+  function dailyCheck() {
+    const today = ymd(new Date());
+    if (save.daily.last === today) return;
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const yest = ymd(yesterday);
+    const streak = save.daily.last === yest ? save.daily.streak + 1 : 1;
+    const DAILY = [20, 30, 40, 60, 80, 100, 150];
+    const reward = DAILY[(streak - 1) % DAILY.length];
+    openModal(h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Daily reward' }),
+      h('h2', { text: 'Day ' + streak }),
+      h('div', { class: 'week' }, DAILY.map((v, k) => h('div', { class: 'day' + (k === (streak - 1) % 7 ? ' on' : ''), text: v }))),
+      h('div', { class: 'big', text: '+' + reward + ' coins' }),
+      h('button', { class: 'primary', text: 'Claim', onclick: () => {
+        if (save.daily.last === today) return;
+        save.daily = { last: today, streak }; save.coins += reward; persist(); renderChips(); closeModal(); track('daily_claim', { streak });
+      } })));
+  }
+
+  /* ---------- screens ---------- */
+  function show(name) {
+    $('mapScreen').hidden = name !== 'map';
+    $('gameScreen').hidden = name !== 'game';
+    inGame = name === 'game';
+    if (inGame) { resize(); wakeFrame(); }
+    setBusy(busy);
+  }
+  function showMap() {
+    closeModal();
+    over = true; busy = true; hammerArmed = false; selected = -1; hint = null;
+    show('map');
+    renderMap();
+  }
+  function renderMap() {
+    const map = $('map');
+    map.textContent = '';
+    let total = 0;
+    for (let g = 0; g * 5 < LEVELS_N; g++) {
+      const nodes = h('div', { class: 'nodes' });
+      for (let i = g * 5; i < Math.min(LEVELS_N, g * 5 + 5); i++) {
+        const st = save.stars[i] || 0;
+        total += st;
+        const locked = i > save.unlocked;
+        const label = 'Level ' + (i + 1) + (locked ? ', locked' : st ? ', ' + st + ' stars' : '');
+        nodes.append(h('button', { class: 'node' + (i === save.unlocked ? ' cur' : ''), disabled: locked, 'aria-label': label, onclick: () => preLevel(i) },
+          h('b', { text: String(i + 1) }), h('small', { 'aria-hidden': 'true', text: '★'.repeat(st) })));
+      }
+      const hdr = h('h3', { text: REGIONS[g % REGIONS.length] });
+      hdr.style.setProperty('--hue', HUES[g % HUES.length]);
+      map.append(h('section', { class: 'region' }, hdr, nodes));
+    }
+    $('starTotal').textContent = total + ' of ' + LEVELS_N * 3 + ' stars';
+    $('resumeBtn').hidden = !save.active;
+    $('resumeBtn').textContent = save.active ? 'Resume level ' + (save.active.level + 1) : 'Resume level';
+    const cur = map.querySelector('.cur');
+    if (cur) cur.focus({ preventScroll: true });
+  }
+
+  function preLevel(i) {
+    if (!Number.isInteger(i) || i < 0 || i >= LEVELS_N || i > save.unlocked) return;
+    if (save.active) { resumeLevel(); return; }
+    const d = levelDef(i);
+    openModal(h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: regionOf(i) }), h('h2', { text: 'Level ' + (i + 1) }),
+      h('p', { text: goalText(d) + ' in ' + d.moves + ' moves.' }),
+      h('div', { class: 'row' }, h('button', { class: 'primary', text: 'Play', onclick: () => startLevel(i) }),
+        h('button', { class: 'ghost', text: 'Back', onclick: showMap }))), { closable: true });
+  }
+
+  async function startLevel(i) {
+    if (!Number.isInteger(i) || i < 0 || i >= LEVELS_N || i > save.unlocked || (inGame && !over)) return;
+    ensureAudio();
+    regen();
+    if (save.lives <= 0) { livesModal(); return; }
+    closeModal();
+    arcadeSeconds = 0;
+    if (window.ArcadeSave) {
+      try { const profile = window.ArcadeSave.normalize(JSON.parse(localStorage.getItem(window.ArcadeSave.KEY))); window.ArcadeSave.visit(profile, 'gumdrop'); localStorage.setItem(window.ArcadeSave.KEY, JSON.stringify(profile)); } catch {}
+    }
+    level = i; def = levelDef(i); moves = def.moves; totalMoves = moves; numTypes = def.types;
+    score = 0; shownScore = 0; collected = 0; over = false; selected = -1; hint = null; hammerArmed = false;
+    jelly = new Array(N * N).fill(false); jellyLeft = 0;
+    if (def.kind === 'jelly') for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (PATTERNS[def.pattern](r, c)) { jelly[r * N + c] = true; jellyLeft++; }
+    jellyTotal = jellyLeft;
+    particles.length = 0; floaters.length = 0; fx.length = 0;
+    busy = true;
+    show('game');
+    $('regionLbl').textContent = regionOf(i);
+    updateHud(); renderChips();
+    track('level_start', { level: i + 1 });
+    newBoard();
+    floater('Level ' + (i + 1), W / 2, W / 2 - 14, 34, '#fff', 1400);
+    floater(goalText(def), W / 2, W / 2 + 22, 18, '#ffd43b', 1400);
+    checkpoint();
+    await dropIn();
+    setBusy(false);
+    lastAct = performance.now();
+    canvas.focus({ preventScroll: true });
+  }
+
+  function resumeLevel() {
+    const run = save.active;
+    if (!run || (inGame && !over)) return;
+    closeModal();
+    level = run.level; def = levelDef(level); numTypes = def.types;
+    moves = run.moves; totalMoves = run.totalMoves; score = shownScore = run.score; collected = run.collected;
+    board = run.board.map((t, i) => ({ ...makeTile(t.t, Math.floor(i / N), i % N), sp: t.sp }));
+    jelly = run.jelly.slice(); jellyLeft = jelly.filter(Boolean).length;
+    jellyTotal = def.kind === 'jelly' ? Array.from({ length: N * N }, (_, i) => PATTERNS[def.pattern](Math.floor(i / N), i % N)).filter(Boolean).length : 0;
+    over = false; busy = true; selected = -1; hammerArmed = false; hint = null;
+    particles.length = 0; floaters.length = 0; fx.length = 0;
+    show('game'); $('regionLbl').textContent = regionOf(level); updateHud(); renderChips();
+    // Saved runs are settled boards; repair older or edited saves before input.
+    if (board.some((t) => t.sp !== 'bomb' && t.t >= numTypes) || findMatches().length) newBoard();
+    afterAction(); canvas.focus({ preventScroll: true });
+  }
+  async function finish(won) {
+    if (over) return;
+    over = true; hammerArmed = false; save.active = null;
+    setBusy(true);
+    if (window.ArcadeSave) {
+      try { const profile = window.ArcadeSave.normalize(JSON.parse(localStorage.getItem(window.ArcadeSave.KEY))); window.ArcadeSave.result(profile, 'gumdrop', score, won, arcadeSeconds); localStorage.setItem(window.ArcadeSave.KEY, JSON.stringify(profile)); } catch {}
+    }
+    track(won ? 'level_win' : 'level_fail', { level: level + 1, score, moves });
+    if (won) {
+      const ratio = moves / totalMoves;
+      const stars = ratio >= 0.3 ? 3 : ratio >= 0.12 ? 2 : 1;
+      const reward = 20 + stars * 10 + moves * 3;
+      save.stars[level] = Math.max(save.stars[level] || 0, stars);
+      save.unlocked = Math.max(save.unlocked, Math.min(LEVELS_N - 1, level + 1));
+      const gemReward = stars * 3;
+      save.gems += gemReward; save.coins += reward; save.wins++;
+      persist(true); renderChips();
+      floater('💎+' + gemReward, W / 2, W / 2 + 46, 26, '#ff5fa2', 1100);
+      [523, 659, 784, 1047].forEach((f, k) => blip(f, 0.25, 'triangle', 0.07, k * 0.1));
+      floater('Goal reached!', W / 2, W / 2, 34, '#ffd43b', 1200);
+      await sleep(REDUCE ? 100 : 900);
+      if (save.wins % 3 === 0) await Monet.interstitial();
+      resultWin(stars, reward, gemReward, false);
+    } else {
+      loseLife(); persist(true);
+      [392, 330, 262].forEach((f, k) => blip(f, 0.3, 'triangle', 0.06, k * 0.14));
+      await sleep(REDUCE ? 100 : 600);
+      resultLose();
+    }
+    setBusy(false);
+  }
+  function resultWin(stars, reward, gemReward, doubled) {
+    const next = level + 1 < LEVELS_N;
+    openModal(h('div', { class: 'card' }, h('h2', { text: next ? 'Level ' + (level + 1) + ' cleared' : 'Journey complete!' }),
+      h('div', { class: 'stars', 'aria-label': stars + ' stars', text: '★'.repeat(stars) + '☆'.repeat(3 - stars) }),
+      h('div', { class: 'big', text: '+' + reward * (doubled ? 2 : 1) + ' coins' }),
+      h('p', { class: 'dim', text: '+' + gemReward + ' gems' }),
+      h('div', { class: 'row' },
+        !doubled ? h('button', { class: 'ghost', text: 'Double coins (watch ad)', disabled: !Monet.available(), onclick: async () => {
+          const earned = await Monet.rewarded('double_coins');
+          if (earned) { save.coins += reward; persist(); renderChips(); }
+          resultWin(stars, reward, gemReward, earned);
+        } }) : null,
+        next ? h('button', { class: 'primary', text: 'Next level', onclick: () => preLevel(level + 1) }) : h('p', { text: 'You cleared all 40 levels. Replay your favourites to earn more stars.' }),
+        h('button', { class: 'ghost', text: 'Map', onclick: showMap }))));
+  }
+  const CONTINUE_COST = 60;
+  function resultLose() {
+    const left = def.kind === 'score' ? (def.target - score).toLocaleString() + ' points to go'
+      : def.kind === 'collect' ? (def.cn - collected) + ' to collect' : jellyLeft + ' jelly left';
+    const continueLevel = () => {
+      save.lives = Math.min(MAX_LIVES, save.lives + 1); regen();
+      closeModal(); over = false; moves += 5; checkpoint(); renderChips(); updateHud(); setBusy(true); afterAction();
+    };
+    openModal(h('div', { class: 'card' }, h('h2', { text: 'Out of moves' }), h('p', { class: 'dim', text: left + '. One life used.' }),
+      row('+5 moves', 'Watch an ad to continue', 'Watch', async () => {
+        if (await Monet.rewarded('continue')) continueLevel(); else resultLose();
+      }, !Monet.available()),
+      row('+5 moves', 'Spend earned coins to continue', CONTINUE_COST + ' coins', () => {
+        if (save.coins < CONTINUE_COST || !over) return;
+        save.coins -= CONTINUE_COST;
+        continueLevel();
+      }, save.coins < CONTINUE_COST),
+      h('div', { class: 'row' },
+        h('button', { class: 'primary', text: 'Retry', onclick: () => preLevel(level) }),
+        h('button', { class: 'ghost', text: 'Map', onclick: showMap }))));
+  }
+
+  /* ---------- HUD ---------- */
+  function updateHud() {
+    $('level').textContent = level + 1;
+    $('score').textContent = Math.round(shownScore).toLocaleString();
+    $('moves').textContent = moves;
+    let frac = 0, txt = '';
+    if (def.kind === 'score') { frac = shownScore / def.target; txt = goalText(def); }
+    else if (def.kind === 'collect') { frac = collected / def.cn; txt = goalText(def) + ': ' + Math.min(collected, def.cn) + ' of ' + def.cn; }
+    else { frac = jellyTotal ? (jellyTotal - jellyLeft) / jellyTotal : 0; txt = goalText(def) + ': ' + jellyLeft + ' left'; }
+    $('goalText').textContent = txt;
+    $('fill').style.width = Math.min(100, frac * 100) + '%';
+    $('progress').setAttribute('aria-valuenow', String(Math.round(Math.min(100, frac * 100))));
+    $('progress').setAttribute('aria-valuetext', txt);
+  }
+
+  /* ---------- drawing ---------- */
+  function poly(pts) {
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+    ctx.closePath();
+  }
+  function shapePath(t, r) {
+    ctx.beginPath();
+    switch (t) {
+      case 0: ctx.arc(0, 0, r, 0, TAU); break;
+      case 1: { const hh = r * 0.9; ctx.rect(-hh, -hh, hh * 2, hh * 2); break; }
+      case 2: poly([[0, -r], [r, r * 0.78], [-r, r * 0.78]]); break;
+      case 3: poly([[0, -r * 1.1], [r * 0.92, 0], [0, r * 1.1], [-r * 0.92, 0]]); break;
+      case 4: { const pts = []; for (let k = 0; k < 6; k++) { const a = k * TAU / 6 + TAU / 12; pts.push([Math.cos(a) * r, Math.sin(a) * r]); } poly(pts); break; }
+      default: { const pts = []; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5; const rad = k % 2 ? r * 0.5 : r * 1.12; pts.push([Math.cos(a) * rad, Math.sin(a) * rad]); } poly(pts); }
+    }
+  }
+  function drawCandy(t, sp, r, now) {
+    if (sp === 'bomb') { drawBomb(r, now); return; }
+    const col = COLORS[t];
+    const lw = r * 0.3, rr = r - lw / 2;
+    const g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r * 1.25);
+    g.addColorStop(0, col[1]); g.addColorStop(0.55, col[0]); g.addColorStop(1, col[2]);
+    ctx.save();
+    ctx.fillStyle = g; ctx.strokeStyle = g; ctx.lineWidth = lw; ctx.lineJoin = 'round';
+    shapePath(t, rr); ctx.fill(); ctx.stroke();
+    ctx.save();
+    shapePath(t, rr); ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.32, -r * 0.42, r * 0.3, r * 0.15, -0.6, 0, TAU); ctx.fill();
+    if (sp === 'h' || sp === 'v') {
+      ctx.lineCap = 'butt';
+      for (const [w, c2] of [[r * 0.22, 'rgba(30,10,60,0.35)'], [r * 0.11, 'rgba(255,255,255,0.92)']]) {
+        ctx.strokeStyle = c2; ctx.lineWidth = w;
+        for (const k of [-0.5, 0, 0.5]) {
+          ctx.beginPath();
+          if (sp === 'h') { ctx.moveTo(-r * 1.3, k * r); ctx.lineTo(r * 1.3, k * r); }
+          else { ctx.moveTo(k * r, -r * 1.3); ctx.lineTo(k * r, r * 1.3); }
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+    if (sp === 'blast') {
+      const pulse = REDUCE ? 0.7 : 0.55 + 0.35 * Math.sin(now / 220);
+      ctx.strokeStyle = 'rgba(255,255,255,' + pulse + ')'; ctx.lineWidth = r * 0.14;
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.12, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#fff';
+      const sr = r * 0.34;
+      ctx.beginPath();
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; const rad = k % 2 ? sr * 0.28 : sr; ctx.lineTo(Math.cos(a - Math.PI / 2) * rad, Math.sin(a - Math.PI / 2) * rad); }
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawBomb(r, now) {
+    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.15);
+    g.addColorStop(0, '#6a55a8'); g.addColorStop(1, '#140c2b');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.02, 0, TAU); ctx.fill();
+    const rot = REDUCE ? 0 : now / 1600;
+    for (let k = 0; k < 6; k++) {
+      const a = rot + k * TAU / 6;
+      ctx.fillStyle = COLORS[k][0];
+      ctx.beginPath(); ctx.arc(Math.cos(a) * r * 0.62, Math.sin(a) * r * 0.62, r * 0.2, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.32, -r * 0.45, r * 0.28, r * 0.13, -0.6, 0, TAU); ctx.fill();
+  }
+  function ringRect(x, y, w, hh, rad) {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, hh, rad); else ctx.rect(x, y, w, hh);
+  }
+
+  function draw(now) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(-30, -30, W + 60, W + 60);
+    if (!REDUCE && shake > 0.3) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      ctx.fillStyle = (r + c) % 2 ? '#fff8fd' : '#f7e9fb';
+      ctx.fillRect(c * cell, r * cell, cell, cell);
+    }
+    for (let i = 0; i < N * N; i++) {
+      if (!jelly[i]) continue;
+      const x = (i % N) * cell, y = ((i / N) | 0) * cell;
+      ctx.fillStyle = 'rgba(255,111,174,0.3)';
+      ringRect(x + 2, y + 2, cell - 4, cell - 4, cell * 0.18); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,170,210,0.75)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    const hintOn = hint && !busy && !over;
+    for (let i = 0; i < N * N; i++) {
+      const tl = board[i];
+      if (!tl) continue;
+      let s = tl.s;
+      if (!REDUCE && hintOn && (hint.a === i || hint.b === i)) s *= 1 + 0.08 * Math.sin(now / 170);
+      const cx = (tl.x + 0.5) * cell, cy = (tl.y + 0.5) * cell;
+      if (i === selected) {
+        s *= 1.1;
+        ctx.strokeStyle = '#7447d1'; ctx.lineWidth = 4;
+        ringRect(tl.x * cell + 3, tl.y * cell + 3, cell - 6, cell - 6, cell * 0.22); ctx.stroke();
+      }
+      if (s <= 0.01) continue;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, tl.a);
+      ctx.translate(cx, cy); ctx.scale(s, s);
+      drawCandy(tl.t, tl.sp, cell * 0.4, now);
+      ctx.restore();
+    }
+    for (let k = fx.length - 1; k >= 0; k--) {
+      const f = fx[k], p = (now - f.born) / f.life;
+      if (p >= 1) { fx.splice(k, 1); continue; }
+      ctx.save();
+      if (f.k === 'row') { ctx.fillStyle = 'rgba(255,184,0,' + 0.75 * (1 - p) + ')'; const hh = cell * 0.7 * (1 - p * 0.6); ctx.fillRect(0, f.r * cell + (cell - hh) / 2, W, hh); }
+      else if (f.k === 'col') { ctx.fillStyle = 'rgba(255,184,0,' + 0.75 * (1 - p) + ')'; const w = cell * 0.7 * (1 - p * 0.6); ctx.fillRect(f.c * cell + (cell - w) / 2, 0, w, W); }
+      else if (f.k === 'ring') { const q = px(f.r * N + f.c); ctx.strokeStyle = 'rgba(255,184,0,' + 0.85 * (1 - p) + ')'; ctx.lineWidth = 6 * (1 - p) + 1; ctx.beginPath(); ctx.arc(q.x, q.y, cell * (0.4 + 2.2 * easeOutCubic(p)), 0, TAU); ctx.stroke(); }
+      else if (f.k === 'ring2') { ctx.globalAlpha = 1 - p; ctx.strokeStyle = f.color; ctx.lineWidth = 10 * (1 - p) + 1; ctx.beginPath(); ctx.arc(f.x, f.y, cell * (0.4 + 3.2 * easeOutCubic(p)), 0, TAU); ctx.stroke(); }
+      else if (f.k === 'zap') { ctx.strokeStyle = 'rgba(255,184,0,' + 0.9 * (1 - p) + ')'; ctx.lineWidth = 3 * (1 - p) + 0.5; ctx.beginPath(); ctx.moveTo(f.p1.x, f.p1.y); ctx.lineTo(f.p2.x, f.p2.y); ctx.stroke(); }
+      ctx.restore();
+    }
+    for (const p of particles) {
+      const lf = p.age / p.life, sz = p.size * (1 - lf * 0.5);
+      ctx.globalAlpha = Math.max(0, 1 - lf * lf);
+      ctx.fillStyle = p.color;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot + p.age * 9);
+      if (p.sh === 2) { ctx.beginPath(); ctx.moveTo(0, -sz * 1.8); ctx.lineTo(sz * 0.4, -sz * 0.4); ctx.lineTo(sz * 1.8, 0); ctx.lineTo(sz * 0.4, sz * 0.4); ctx.lineTo(0, sz * 1.8); ctx.lineTo(-sz * 0.4, sz * 0.4); ctx.lineTo(-sz * 1.8, 0); ctx.lineTo(-sz * 0.4, -sz * 0.4); ctx.closePath(); ctx.fill(); }
+      else if (p.sh === 1) ctx.fillRect(-sz, -sz * 0.5, sz * 2, sz);
+      else { ctx.beginPath(); ctx.arc(0, 0, sz, 0, TAU); ctx.fill(); }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    if (focused && !busy && !over) {
+      const r = (cursor / N) | 0, c = cursor % N;
+      ctx.strokeStyle = hammerArmed ? '#ffd43b' : '#ff6fae'; ctx.lineWidth = 3;
+      ringRect(c * cell + 2, r * cell + 2, cell - 4, cell - 4, cell * 0.2); ctx.stroke();
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let k = floaters.length - 1; k >= 0; k--) {
+      const f = floaters[k], p = (now - f.born) / f.life;
+      if (p >= 1) { floaters.splice(k, 1); continue; }
+      ctx.globalAlpha = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3;
+      ctx.font = '700 ' + f.size + 'px Fredoka, ui-rounded, system-ui, sans-serif';
+      ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(120,55,160,0.92)';
+      const y = REDUCE ? f.y : f.y - 26 * easeOutCubic(p);
+      ctx.strokeText(f.text, f.x, y);
+      ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  let lastT = performance.now();
+  let frameId = 0;
+  function frame() {
+    if (document.hidden || adPaused || !inGame) { frameId = 0; return; }
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+    runAnims(); shake *= 0.86;
+    for (let k = particles.length - 1; k >= 0; k--) {
+      const p = particles[k];
+      p.age += dt; p.vy += 700 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.age >= p.life) particles.splice(k, 1);
+    }
+    if (inGame) {
+      if (!over && !modalEl) arcadeSeconds += dt;
+      if (shownScore < score) {
+        shownScore = Math.min(score, shownScore + Math.max(1, Math.ceil((score - shownScore) * 0.15)));
+        updateHud();
+      }
+      if (!busy && !over && !hint && now - lastAct > 7000) hint = findMove();
+      draw(now);
+    }
+    frameId = requestAnimationFrame(frame);
+  }
+  function wakeFrame() { if (!frameId && inGame && !adPaused && !document.hidden) { lastT = performance.now(); frameId = requestAnimationFrame(frame); } }
+
+  /* ---------- input ---------- */
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    W = rect.width;
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(W * dpr);
+    cell = W / N;
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
+  window.addEventListener('resize', resize);
+
+  function cellAt(e) {
+    const rect = canvas.getBoundingClientRect();
+    const c = Math.floor(((e.clientX - rect.left) / rect.width) * N);
+    const r = Math.floor(((e.clientY - rect.top) / rect.height) * N);
+    return inb(r, c) ? r * N + c : -1;
+  }
+  let down = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    ensureAudio();
+    lastAct = performance.now(); hint = null;
+    if (busy || over || modalEl || !e.isPrimary || e.button !== 0) return;
+    canvas.focus({ preventScroll: true });
+    const i = cellAt(e);
+    if (i < 0) return;
+    cursor = i;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* not critical */ }
+    down = { pointerId: e.pointerId, i, x: e.clientX, y: e.clientY, moved: false };
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!down || e.pointerId !== down.pointerId || down.moved || hammerArmed || busy || modalEl) return;
+    const dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (Math.hypot(dx, dy) > cell * 0.35) {
+      down.moved = true;
+      let r = (down.i / N) | 0, c = down.i % N;
+      if (Math.abs(dx) > Math.abs(dy)) c += dx > 0 ? 1 : -1; else r += dy > 0 ? 1 : -1;
+      selected = -1;
+      if (inb(r, c)) trySwap(down.i, r * N + c);
+    }
+  });
+  canvas.addEventListener('pointerup', (e) => {
+    if (!down || e.pointerId !== down.pointerId) return;
+    const d = down; down = null;
+    if (d.moved || busy || over) return;
+    if (hammerArmed) { doHammer(d.i); return; }
+    if (selected < 0) selected = d.i;
+    else if (selected === d.i) selected = -1;
+    else if (adjacent(selected, d.i)) { const s = selected; selected = -1; trySwap(s, d.i); }
+    else selected = d.i;
+    announceCursor();
+  });
+  canvas.addEventListener('pointercancel', () => { down = null; });
+  canvas.addEventListener('focus', () => { focused = true; if (!busy && !over) announceCursor(); });
+  canvas.addEventListener('blur', () => { focused = false; });
+  canvas.addEventListener('keydown', (e) => {
+    lastAct = performance.now(); hint = null;
+    if (busy || over || modalEl) return;
+    if (e.key === 'Escape') { e.preventDefault(); selected = -1; hammerArmed = false; updateBoosters(); announceCursor(); return; }
+    let dr = 0, dc = 0;
+    if (e.key === 'ArrowUp') dr = -1;
+    else if (e.key === 'ArrowDown') dr = 1;
+    else if (e.key === 'ArrowLeft') dc = -1;
+    else if (e.key === 'ArrowRight') dc = 1;
+    else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); ensureAudio();
+      if (hammerArmed) { doHammer(cursor); return; }
+      selected = selected >= 0 ? -1 : cursor; announceCursor(); return;
+    } else return;
+    e.preventDefault(); ensureAudio();
+    const r = ((cursor / N) | 0) + dr, c = (cursor % N) + dc;
+    if (!inb(r, c)) return;
+    const j = r * N + c;
+    if (selected >= 0) { const from = cursor; selected = -1; cursor = j; trySwap(from, j); }
+    else cursor = j;
+    announceCursor();
+  });
+
+  BOOST.forEach((b) => $('b-' + b.k).addEventListener('click', () => boostClick(b.k)));
+  $('livesChip').addEventListener('click', livesModal);
+  $('coinsChip').addEventListener('click', shop);
+  $('mapBtn').addEventListener('click', () => {
+    if (busy) return;
+    if (over) { showMap(); return; }
+    openModal(h('div', { class: 'card' }, h('h2', { text: 'Leave this level?' }), h('p', { class: 'dim', text: 'You will lose a life.' }),
+      h('div', { class: 'row' },
+        h('button', { class: 'primary', text: 'Keep playing', onclick: closeModal }),
+        h('button', { class: 'ghost', text: 'Leave', onclick: () => { save.active = null; loseLife(); persist(true); showMap(); } }))), { closable: true });
+  });
+  $('helpBtn').addEventListener('click', help);
+  $('privacyBtn').addEventListener('click', privacy);
+  $('resumeBtn').addEventListener('click', resumeLevel);
+  $('soundBtn').addEventListener('click', () => {
+    muted = !muted; save.sound = !muted; persist();
+    $('soundBtn').textContent = muted ? 'Sound off' : 'Sound on';
+    $('soundBtn').setAttribute('aria-pressed', String(!muted));
+    if (!muted) ensureAudio();
+  });
+  $('soundBtn').textContent = muted ? 'Sound off' : 'Sound on';
+  $('soundBtn').setAttribute('aria-pressed', String(!muted));
+
+  /* ---------- boot ---------- */
+  regen();
+  renderChips();
+  updateBoosters();
+  setInterval(() => { regen(); renderChips(); }, 1000);
+  persist(true);
+  showMap();
+  dailyCheck();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (AC) AC.suspend().catch(() => {}); down = null; }
+    else { regen(); renderChips(); wakeFrame(); }
+  });
+})();
+</script>
+</body>
+</html>

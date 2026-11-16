@@ -1,0 +1,11 @@
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import Catalog from '../lib/catalog.cjs';
+import { useProfile } from './ProfileProvider';
+import GameCard from './GameCard';
+export default function GameLibrary({ favoritesOnly=false }) {
+  const { profile,hydrated }=useProfile(); const [query,setQuery]=useState(''),[category,setCategory]=useState('All games'),[sort,setSort]=useState('featured');const search=useRef(null);
+  const games=Catalog.selectGames({query,category,sort,favoritesOnly,profile});
+  useEffect(()=>{const key=e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)&&!document.body.classList.contains('modalOpen')){e.preventDefault();search.current?.focus();}};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key);},[]);
+  return <section className="library" id="library" aria-labelledby="libraryTitle"><div className="sectionHeading"><div><span className="eyebrow">PICK YOUR NEXT PLAY</span><h2 id="libraryTitle">{favoritesOnly?'Your favorites':'Explore the arcade'} <span>{games.length}</span></h2></div><label className="search"><span aria-hidden="true">⌕</span><input ref={search} type="search" placeholder="Search games…" aria-label="Search games" maxLength={80} value={query} onChange={e=>setQuery(e.target.value)}/><kbd>/</kbd></label></div><div className="libraryTools"><div className="categories" role="group" aria-label="Filter games by category">{Catalog.categories.map(name=><button key={name} className="categoryButton" aria-pressed={category===name} onClick={()=>setCategory(name)}>{name}</button>)}</div><label className="sortLabel">Sort <select aria-label="Sort games" value={sort} onChange={e=>setSort(e.target.value)}><option value="featured">Featured</option><option value="az">A–Z</option><option value="recent">Recently played</option></select></label></div><div className="gameGrid" data-testid="game-grid">{games.map(game=><GameCard key={game.id} game={game}/>)}</div>{!games.length&&<div className="emptyState"><h3>{favoritesOnly&&!hydrated?'Loading your favorites…':'No games found'}</h3><p>{favoritesOnly&&!profile.favorites.length?'Tap a heart on any game to save it here.':'Try another search or category.'}</p><button className="secondary" onClick={()=>{setQuery('');setCategory('All games');}}>Clear filters</button></div>}</section>;
+}

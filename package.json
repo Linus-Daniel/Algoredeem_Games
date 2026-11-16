@@ -1,0 +1,27 @@
+{
+  "name": "algoredeem-games",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Offline-capable platform with 31 browser games",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/prepare-next.cjs && next dev --webpack",
+    "start": "npm run dev",
+    "build": "node scripts/prepare-next.cjs --production && next build --webpack && node scripts/finalize-next.cjs",
+    "preview": "node scripts/serve-next.cjs",
+    "build:offline": "node scripts/build.cjs",
+    "preview:offline": "node scripts/serve.cjs dist",
+    "test": "node --test tests/save.test.cjs tests/server.test.cjs tests/game.test.cjs tests/offline.test.cjs tests/ads.test.cjs tests/arcade.test.cjs tests/arena.test.cjs tests/platform.test.cjs tests/migration.test.cjs",
+    "test:browser:offline": "node tests/browser.cjs",
+    "test:browser": "node tests/next-browser.cjs",
+    "check": "npm test && npm run build && node scripts/verify-next.cjs",
+    "check:offline": "npm test && npm run build:offline && node scripts/verify-build.cjs"
+  },
+  "dependencies": {
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  }
+}

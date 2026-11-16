@@ -1,0 +1,12 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import Catalog from '../../../lib/catalog.cjs';
+import GameClient from '../../../components/GameClient';
+import FavoriteButton from '../../../components/FavoriteButton';
+export const dynamicParams=false;
+export function generateStaticParams(){return Catalog.games.map(game=>({id:game.id}));}
+export async function generateMetadata({params}){const{id}=await params,game=Catalog.byId(id);if(!game)return{};return {title:game.title,description:game.description,alternates:{canonical:Catalog.gameHref(game)},openGraph:{title:game.title+' · Algoredeem Games',description:game.description,url:Catalog.gameHref(game),images:[{url:Catalog.poster(game),width:640,height:400,alt:game.title}]}};}
+export default async function GamePage({params}){
+  const{id}=await params,game=Catalog.byId(id);if(!game)notFound();const related=Catalog.games.filter(g=>g.id!==id).sort((a,b)=>Number(b.category===game.category)-Number(a.category===game.category)).slice(0,3);
+  return <main id="mainContent"><div className="playHeading"><Link className="textLink" href="/">← Back to arcade</Link><span className="pill">{game.category}</span></div><div className="gamePageHeading"><h1 className="gamePageTitle">{game.title}</h1><FavoriteButton id={id}/></div><p className="gameIntro">{game.description}</p>{id==='gumdrop'?<section className="gumdropFull"><p className="gameIntro">{game.controls} Your existing Gumdrop level progress stays in this browser.</p><iframe className="gumdropEmbed" src="/gumdrop.html" title="Play Gumdrop Grid" allow="autoplay; fullscreen"/><p><a className="textLink" href="/gumdrop.html">Open Gumdrop Grid full screen ↗</a></p></section>:<div className="playLayout"><GameClient game={game}/><aside className="gameSidebar"><div className="sideCard"><span className="eyebrow">THE QUICK GUIDE</span><h2>How to play</h2><p id="gameInstructions">{game.controls}</p><div className="controlBadge">Keyboard + touch</div></div><div className="sideCard"><span className="eyebrow">TRY SOMETHING ELSE</span><div className="relatedGames">{related.map(g=><Link className="relatedGame" href={Catalog.gameHref(g)} key={g.id}><img src={Catalog.poster(g)} alt="" width="66" height="47"/><span><b>{g.title}</b><small>{g.category}</small></span></Link>)}</div></div><div className="sideNote">✦ Your best scores are saved on this device.</div></aside></div>}</main>;
+}

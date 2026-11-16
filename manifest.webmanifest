@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "Algoredeem Games",
+  "short_name": "Algoredeem",
+  "description": "31 free football, racing, sports, action, puzzle and rhythm games.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c1020",
+  "theme_color": "#0c1020",
+  "lang": "en",
+  "icons": [
+    { "src": "assets/arcade-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/arcade-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

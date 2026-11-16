@@ -1,0 +1,7 @@
+dist/
+artifacts/
+node_modules/
+*.log
+.next/
+out/
+public/
