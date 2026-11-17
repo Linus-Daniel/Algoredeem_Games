@@ -28,6 +28,10 @@ for(const g of Catalog.games){const html=fs.readFileSync(path.join(dir,'games',g
 assert.ok(fs.readFileSync(path.join(dir,'games/gumdrop/index.html'),'utf8').includes('src="/gumdrop.html"'));
 assert.ok(headers.includes("frame-ancestors 'self'"),'Gumdrop must allow same-origin iframe');
 assert.ok(manifest.files.some(f=>f.startsWith('_next/static/')&&f.endsWith('.js')));
+const clientCode=manifest.files.filter(f=>f.startsWith('_next/static/')&&f.endsWith('.js')).map(f=>fs.readFileSync(path.join(dir,f),'utf8')).join('\n');
+assert.ok(clientCode.includes('data-player')&&clientCode.includes('playScreen'),'Game screen must be bundled with the client');
+assert.equal(clientCode.includes('/assets/player-frame.html'),false,'Game startup must not request an HTML fragment');
+assert.equal(manifest.files.includes('assets/player-frame.html'),false,'No HTML fragment should be needed in the export');
 const worker=fs.readFileSync(path.join(dir,'sw.js'),'utf8');new vm.Script(worker);assert.ok(worker.includes(manifest.id));assert.ok(!worker.includes('__BUILD_ID__'));
 const offline=JSON.parse(worker.match(/const FILES=(\[[^;]+\]);/)[1]);
 for(const file of manifest.files)if(file!=='sw.js')assert.ok(offline.includes('./'+file),'Missing offline file: '+file);

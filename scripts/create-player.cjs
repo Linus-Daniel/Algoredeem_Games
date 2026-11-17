@@ -3,6 +3,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname,'..');
 function createPlayer() {
+  // Keep the screen in the client bundle: static hosts may not serve HTML fragments.
+  const frame=fs.readFileSync(path.join(root,'assets/player-frame.html'),'utf8');
+  fs.writeFileSync(path.join(root,'lib/player-frame.cjs'),'/* Generated from assets/player-frame.html. */\nmodule.exports = '+JSON.stringify(frame)+';\n');
   const source=fs.readFileSync(path.join(root,'assets/arcade.js'),'utf8');
   function between(start,end){const a=source.indexOf(start),b=source.indexOf(end,a);if(a<0||b<0)throw new Error('Player extraction marker missing: '+start);return source.slice(a,b);}
   const helper=between('  const el =','  let profile;');

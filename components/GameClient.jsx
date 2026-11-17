@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useProfile } from './ProfileProvider';
 import { loadPlayer } from '../lib/runtime-loader';
 import Catalog from '../lib/catalog.cjs';
+import playerFrame from '../lib/player-frame.cjs';
 import Modal from './Modal';
 export default function GameClient({ game }) {
   const { store }=useProfile(),scope=useRef(null),controller=useRef(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[help,setHelp]=useState(false);
@@ -10,8 +11,8 @@ export default function GameClient({ game }) {
   useEffect(()=>{
     let disposed=false;setError('');setLoading(true);
     (async()=>{
-      const [Player,response]=await Promise.all([loadPlayer(),fetch('/assets/player-frame.html')]);if(!response.ok)throw new Error('Game screen could not load.');const html=await response.text();if(disposed)return;
-      scope.current.innerHTML=html;
+      const Player=await loadPlayer();if(disposed)return;
+      scope.current.innerHTML=playerFrame;
       controller.current=Player.mount(scope.current,{id:game.id,getProfile:()=>store.getSnapshot().profile,onVisit:id=>store.visit(id),onResult:(...args)=>store.result(...args),onPreferences:p=>store.preferences(p),ads:window.GameAdService,onHelp:()=>setHelp(true)});
       setLoading(false);
     })().catch(e=>{if(!disposed){setError(e.message);setLoading(false);}});

@@ -79,7 +79,7 @@ The arcade profile is local to this browser. It stores the player name, favorite
 - `assets/catalog.js` contains metadata and controls for all 31 games.
 - `assets/arcade-engine.js` and `assets/arena-engine.js` implement game rules. `assets/arena-renderer.js` draws the detailed sports, racing and action scenes.
 - `assets/arcade.js` remains the offline portal/player source. `scripts/create-player.cjs` extracts its gameplay into **generated** `assets/player.js`, so both editions use the same rules, inputs and renderer. Edit the source and generator; rebuilding overwrites the generated player.
-- `assets/player-frame.html` scopes player controls independently of React. `assets/ads-consent.js` connects the hosted player to the optional ad adapter.
+- `assets/player-frame.html` scopes player controls independently of React. The generator bundles it through `lib/player-frame.cjs`, so game screens need no separate HTML request. `assets/ads-consent.js` connects the hosted player to the optional ad adapter.
 - `gumdrop.html`, `assets/game.js`, `assets/save.js` and `assets/styles.css` contain the original game.
 - `scripts/prepare-next.cjs` builds the offline editions and prepares game assets in generated `public/` before Next.js starts.
 - `scripts/finalize-next.cjs` generates release-specific offline caching and script hashes after export. `scripts/serve-next.cjs` serves only the exported allowlist with the same security policies.

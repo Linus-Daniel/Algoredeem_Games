@@ -13,12 +13,13 @@ const { finalize, worker } = require('../scripts/finalize-next.cjs');
 const { handler } = require('../scripts/serve-next.cjs');
 const { scriptHashes } = require('../scripts/next-security.cjs');
 createPlayer();
+const playerFrame = require('../lib/player-frame.cjs');
 function storage(initial = {}) {
   const data = new Map(Object.entries(initial));
   return { data, getItem:k=>data.get(k)??null, setItem:(k,v)=>data.set(k,v) };
 }
 function player(id, extras = {}) {
-  const html = '<head></head><body>' + fs.readFileSync(path.join(__dirname,'../assets/player-frame.html'),'utf8') + '</body>';
+  const html = '<head></head><body>' + playerFrame + '</body>';
   const p = platform({ html, modules:['config','ads','catalog','arcade-save','arena-engine','arcade-engine','arena-renderer','player'] });
   const store = createProfileStore(() => p.context.localStorage); store.hydrate();
   const results = [], scope = p.doc.body;

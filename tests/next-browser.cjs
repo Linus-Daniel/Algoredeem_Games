@@ -18,6 +18,9 @@ async function main() {
     await browser.call('Page.addScriptToEvaluateOnNewDocument',{source:"document.addEventListener('securitypolicyviolation',e=>window.reportCSP(e.violatedDirective+' '+e.blockedURI));"});
     await browser.call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
     await browser.call('Emulation.setTouchEmulationEnabled',{enabled:true});
+    // Reproduce hosts that reject HTML fragments. Every game must still open.
+    await browser.call('Network.enable');
+    await browser.call('Network.setBlockedURLs',{urls:['*player-frame.html*']});
     const base=`http://127.0.0.1:${server.address().port}/`;
     await browser.call('Page.navigate',{url:base});await browser.until("document.querySelectorAll('.gameCard').length===31");
     await browser.evaluate("localStorage.setItem('algoredeem-games-profile-v1',JSON.stringify({name:'Ada',favorites:['snake'],sound:false,stats:{snake:{best:42,plays:2,wins:1,seconds:14}}}));location.reload()");
